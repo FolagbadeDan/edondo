@@ -1,0 +1,57 @@
+# Clearance
+
+An offline-first sobriety dashboard for quitting a daily cannabis habit. No backend, no
+account, no analytics, no network calls. All state lives in `localStorage` on the device.
+
+## Deploy
+
+**Netlify** — drag this folder onto https://app.netlify.com/drop, or connect the repo.
+Build command: none. Publish directory: `.`
+
+**Vercel** — `vercel --prod`, or import the repo. Framework preset: Other.
+
+Both need no build step. `netlify.toml` and `vercel.json` are already configured to stop the
+service worker from being cached, which otherwise strands users on an old version.
+
+## Local
+
+```bash
+python3 -m http.server 8080   # then http://localhost:8080
+```
+
+Service workers and `localStorage` need a real origin, so `file://` will not work.
+`clearance.html` is a single-file build that runs anywhere, without the PWA parts.
+
+## Medical claims
+
+Every milestone in the app carries its source in the UI. Timings are drawn from:
+
+| Claim | Source |
+|---|---|
+| Withdrawal onset 24–48h, peak days 2–6, resolves 1–2 weeks | DSM-5; Cleveland Clinic |
+| Memory/learning recovery, largely within week 1 | Schuster et al., *J Clin Psychiatry* 2018 |
+| CB1 receptor density normalises at ~28 days | Hirvonen et al., *Mol Psychiatry* 2012; D'Souza et al. 2016 |
+| Urinary THC-COOH clears up to ~30 days in heavy users | Schuster et al., *J Psychopharmacol* 2020 |
+| Sleep disturbance persists 30–45 days | Cannabis withdrawal literature |
+| Bronchitis symptoms reverse after cessation | Hancox et al., *Eur Respir J* 2015; NASEM 2017 |
+| Years of life gained by age at quitting | Jha et al., *NEJM* 2013 |
+| Mortality benefit measurable from 3 years; ~10y averted at 10y | Cho et al., *NEJM Evidence* 2024 |
+
+Two caveats stated in the app itself: the mortality figures come from **tobacco** cessation
+cohorts, since long-term cannabis mortality data is far thinner; and the memory study was
+conducted in 16–25 year olds.
+
+## Production note
+
+Tailwind loads from the Play CDN so the repo stays build-free. For a real deployment,
+install Tailwind and compile a static stylesheet — the CDN compiles on every page load.
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `index.html` | Shell, design tokens, all five tab layouts |
+| `app.js` | State, clocks, milestone data, timers, the 15-minute rule |
+| `sw.js` | Cache-first service worker |
+| `manifest.webmanifest` | PWA install metadata |
+| `clearance.html` | Single-file build (no PWA) |

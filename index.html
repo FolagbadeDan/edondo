@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0A0E14" />
+<meta name="description" content="A quiet, private tracker for the first ten years without smoke." />
+<title>Clearance — Day 1</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        ink:     '#0A0E14',
+        surface: '#111823',
+        raised:  '#17202D',
+        line:    '#222E3D',
+        body:    '#E7EEF7',
+        muted:   '#8496AB',
+        faint:   '#5A6B80',
+        dawn:    '#8FB8E8',
+        oxygen:  '#79C8B4',
+        ember:   '#E5A25C',
+        alarm:   '#E4735F'
+      },
+      fontFamily: {
+        display: ['"Bricolage Grotesque"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans:    ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono:    ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace']
+      },
+      borderRadius: { xl2: '1.25rem' }
+    }
+  }
+}
+</script>
+<script src="https://unpkg.com/lucide@0.454.0/dist/umd/lucide.min.js"></script>
+
+<style>
+  :root { color-scheme: dark; }
+  html, body { background: #0A0E14; }
+  body {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overscroll-behavior-y: none;
+  }
+  .tnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+  /* ambient field: a slow vertical gradient that reads as dawn, not decoration */
+  .field::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(120% 60% at 50% -10%, rgba(143,184,232,.10), transparent 60%),
+      radial-gradient(90% 50% at 50% 110%, rgba(121,200,180,.06), transparent 65%);
+  }
+  .panic-mode.field::before {
+    background: radial-gradient(120% 70% at 50% 0%, rgba(229,162,92,.14), transparent 65%);
+  }
+
+  /* coherent breathing: 5.5 breaths per minute = 10.9s cycle */
+  @keyframes breathe {
+    0%,100% { transform: scale(.955); opacity: .45; }
+    45%     { transform: scale(1.045); opacity: .95; }
+  }
+  .breathe { animation: breathe 10.9s ease-in-out infinite; transform-origin: center; }
+
+  @keyframes rise { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform:none; } }
+  .rise { animation: rise .5s cubic-bezier(.2,.7,.3,1) both; }
+
+  @keyframes pulseRing { 0%,100%{opacity:.35} 50%{opacity:.8} }
+  .pulse-ring { animation: pulseRing 2.4s ease-in-out infinite; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .breathe, .rise, .pulse-ring { animation: none !important; }
+    * { transition-duration: .01ms !important; }
+  }
+
+  .ring-track { stroke: #222E3D; }
+  .ring-fill  { transition: stroke-dashoffset .6s cubic-bezier(.2,.7,.3,1); }
+
+  /* hairline card */
+  .card { background: linear-gradient(180deg, rgba(23,32,45,.9), rgba(17,24,35,.9)); border: 1px solid #222E3D; }
+
+  .eyebrow { letter-spacing: .18em; text-transform: uppercase; font-size: .625rem; font-weight: 600; }
+
+  input, textarea, select { color-scheme: dark; }
+  textarea { resize: none; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #222E3D; border-radius: 99px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  :focus-visible { outline: 2px solid #8FB8E8; outline-offset: 2px; border-radius: 6px; }
+
+  [hidden] { display: none !important; }
+  .tap { -webkit-tap-highlight-color: transparent; }
+
+  .safe-b { padding-bottom: env(safe-area-inset-bottom); }
+  .safe-t { padding-top: env(safe-area-inset-top); }
+
+  details > summary { list-style: none; cursor: pointer; }
+  details > summary::-webkit-details-marker { display: none; }
+  details[open] .chev { transform: rotate(180deg); }
+  .chev { transition: transform .25s ease; }
+
+  .seg[aria-selected="true"] { background: #17202D; color: #E7EEF7; }
+</style>
+</head>
+
+<body class="field bg-ink text-body font-sans antialiased">
+
+<!-- ══════════════ ONBOARDING ══════════════ -->
+<div id="onboard" class="fixed inset-0 z-[80] bg-ink flex items-center justify-center p-6" hidden>
+  <div class="w-full max-w-md rise">
+    <p class="eyebrow text-dawn mb-3">Clearance</p>
+    <h1 class="font-display text-4xl font-extrabold leading-[1.05] tracking-tight mb-3">Ten years of smoke stops being your baseline today.</h1>
+    <p class="text-muted text-sm leading-relaxed mb-8">This runs entirely on your device. Nothing is uploaded, nothing is shared, no account required.</p>
+
+    <label class="block mb-2 eyebrow text-faint">When did the last one end?</label>
+    <div class="flex gap-2 mb-6">
+      <input id="onboardTime" type="datetime-local" class="flex-1 bg-raised border border-line rounded-xl px-3 py-3 text-sm font-mono tnum" />
+      <button id="onboardNow" class="tap px-4 rounded-xl border border-line text-sm text-dawn hover:bg-raised transition">Now</button>
+    </div>
+
+    <label class="block mb-2 eyebrow text-faint">Your age</label>
+    <input id="onboardAge" type="number" min="13" max="100" inputmode="numeric" placeholder="32"
+      class="w-full bg-raised border border-line rounded-xl px-4 py-3 text-sm font-mono tnum placeholder:text-faint mb-6" />
+
+    <label class="block mb-2 eyebrow text-faint">Why you quit</label>
+    <textarea id="onboardWhy" rows="4" placeholder="Write it the way you'd say it out loud at 2am. You'll read this back when it counts." class="w-full bg-raised border border-line rounded-xl px-4 py-3 text-sm leading-relaxed placeholder:text-faint mb-6"></textarea>
+
+    <button id="onboardStart" class="tap w-full bg-dawn text-ink font-semibold rounded-xl py-4 hover:brightness-110 active:scale-[.99] transition">Start the clock</button>
+  </div>
+</div>
+
+<!-- ══════════════ APP SHELL ══════════════ -->
+<div id="shell" class="relative z-10 min-h-screen flex flex-col" hidden>
+
+  <!-- Top status strip -->
+  <header class="safe-t sticky top-0 z-30 backdrop-blur-xl bg-ink/80 border-b border-line/70">
+    <div class="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <span class="relative flex h-2 w-2">
+          <span class="pulse-ring absolute inline-flex h-full w-full rounded-full bg-oxygen"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-oxygen"></span>
+        </span>
+        <span class="font-display font-semibold tracking-tight text-[15px]">Clearance</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="text-right leading-none">
+          <div id="stripDay" class="font-mono tnum text-[15px] font-medium">Day 1</div>
+          <div id="stripClock" class="font-mono tnum text-[10px] text-faint mt-0.5">00:00:00</div>
+        </div>
+        <button data-goto="you" class="tap text-muted hover:text-body transition" aria-label="Your settings">
+          <i data-lucide="settings-2" class="w-[18px] h-[18px]"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-5xl w-full mx-auto px-5 pt-6 pb-44">
+
+    <!-- ══════════ HOME ══════════ -->
+    <section id="tab-home" data-tab class="space-y-4">
+
+      <!-- SIGNATURE: breathing clearance dial -->
+      <div class="relative card rounded-xl2 px-6 pt-8 pb-7 overflow-hidden">
+        <div class="flex flex-col items-center">
+          <div class="relative w-[248px] h-[248px] flex items-center justify-center">
+            <svg viewBox="0 0 240 240" class="absolute inset-0 w-full h-full -rotate-90">
+              <circle class="breathe" cx="120" cy="120" r="112" fill="none" stroke="#8FB8E8" stroke-opacity=".14" stroke-width="1"/>
+              <circle class="ring-track" cx="120" cy="120" r="98" fill="none" stroke-width="6" stroke-linecap="round"/>
+              <circle id="dayRing" class="ring-fill" cx="120" cy="120" r="98" fill="none" stroke="#8FB8E8" stroke-width="6" stroke-linecap="round" stroke-dasharray="615.75" stroke-dashoffset="615.75"/>
+            </svg>
+            <div class="text-center">
+              <div id="heroDays" class="font-mono tnum text-[68px] leading-none font-medium tracking-tighter">1</div>
+              <div class="eyebrow text-faint mt-2">days without smoke</div>
+              <div id="heroClock" class="font-mono tnum text-[15px] text-dawn mt-3">00h 00m 00s</div>
+            </div>
+          </div>
+          <p id="heroPhase" class="text-center text-sm text-muted leading-relaxed mt-6 max-w-xs"></p>
+        </div>
+      </div>
+
+      <!-- Lung recovery -->
+      <div class="card rounded-xl2 p-5">
+        <div class="flex items-start justify-between mb-1">
+          <div class="flex items-center gap-2">
+            <i data-lucide="wind" class="w-4 h-4 text-oxygen"></i>
+            <h2 class="font-display font-semibold tracking-tight">Airway recovery</h2>
+          </div>
+          <span id="lungPct" class="font-mono tnum text-sm text-oxygen">0.0%</span>
+        </div>
+        <p id="lungStage" class="text-xs text-faint mb-4">Inflammation clearing — reversible, unlike tobacco damage</p>
+        <div class="h-2 rounded-full bg-line overflow-hidden">
+          <div id="lungBar" class="h-full rounded-full bg-gradient-to-r from-oxygen/60 to-oxygen transition-all duration-700" style="width:0%"></div>
+        </div>
+        <div class="flex justify-between mt-2 text-[10px] font-mono text-faint tnum">
+          <span>day 1</span><span>1 mo</span><span>3 mo</span><span>12 mo</span>
+        </div>
+      </div>
+
+      <!-- 10 year arc -->
+      <div class="card rounded-xl2 p-5">
+        <div class="flex items-start justify-between mb-1">
+          <div class="flex items-center gap-2">
+            <i data-lucide="route" class="w-4 h-4 text-dawn"></i>
+            <h2 class="font-display font-semibold tracking-tight">The ten-year arc</h2>
+          </div>
+          <span id="arcPos" class="font-mono tnum text-sm text-dawn">Day 1</span>
+        </div>
+        <p class="text-xs text-faint mb-6">Ten years of smoking, mapped against ten years of undoing it</p>
+
+        <div class="relative h-2 rounded-full bg-line mb-1">
+          <div id="arcBar" class="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-dawn/50 to-dawn transition-all duration-700" style="width:0%"></div>
+          <div id="arcTicks"></div>
+          <div id="arcHead" class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-dawn ring-4 ring-ink transition-all duration-700" style="left:0%"></div>
+        </div>
+        <div id="arcLabels" class="relative h-9 mt-3"></div>
+      </div>
+
+      <!-- Next milestone -->
+      <div class="card rounded-xl2 p-5">
+        <p class="eyebrow text-faint mb-2">Next unlock</p>
+        <h3 id="nextName" class="font-display text-xl font-semibold tracking-tight mb-1">—</h3>
+        <p id="nextDesc" class="text-sm text-muted leading-relaxed mb-4">—</p>
+        <div id="nextCountdown" class="font-mono tnum text-2xl text-dawn">—</div>
+      </div>
+
+      <!-- 10 year milestones -->
+      <div>
+        <div class="flex items-center gap-2 px-1 mb-3 mt-6">
+          <i data-lucide="git-commit-horizontal" class="w-4 h-4 text-dawn"></i>
+          <h2 class="font-display font-semibold tracking-tight">Ten-year healing record</h2>
+        </div>
+        <ol id="milestoneList" class="relative border-l border-line ml-3 space-y-1"></ol>
+      </div>
+    </section>
+
+    <!-- ══════════ FLOW ══════════ -->
+    <section id="tab-flow" data-tab class="space-y-4" hidden>
+      <div class="px-1 pb-1">
+        <p class="eyebrow text-dawn mb-2">The natural high engine</p>
+        <h1 class="font-display text-3xl font-extrabold tracking-tight leading-tight">Natural Flow</h1>
+        <p class="text-sm text-muted mt-2 leading-relaxed">Earn the focus chemically before you sit down. Twenty-five minutes of work, five minutes off.</p>
+      </div>
+
+      <!-- Dopamine gate -->
+      <div id="gateCard" class="card rounded-xl2 p-5">
+        <div class="flex items-center gap-2 mb-3">
+          <span id="gateIcon" class="flex"><i data-lucide="lock" class="w-4 h-4 text-ember"></i></span>
+          <h2 class="font-display font-semibold tracking-tight">Pre-work dopamine menu</h2>
+        </div>
+        <p id="gateStatus" class="text-sm text-muted leading-relaxed mb-4">The timer is locked. Pick one 5–15 minute physical trigger and finish it first.</p>
+        <button id="openMenu" class="tap w-full border border-dawn/40 text-dawn rounded-xl py-3 text-sm font-medium hover:bg-dawn/10 transition">Open the menu</button>
+      </div>
+
+      <!-- Timer -->
+      <div class="card rounded-xl2 p-6">
+        <div class="flex justify-center gap-1 mb-6 p-1 rounded-xl bg-ink/60 border border-line w-fit mx-auto">
+          <button class="seg tap px-4 py-1.5 rounded-lg text-xs font-medium text-muted transition" data-mode="work" aria-selected="true">Work · 25</button>
+          <button class="seg tap px-4 py-1.5 rounded-lg text-xs font-medium text-muted transition" data-mode="break" aria-selected="false">Break · 5</button>
+        </div>
+
+        <div class="flex justify-center mb-6">
+          <div class="relative w-[212px] h-[212px] flex items-center justify-center">
+            <svg viewBox="0 0 200 200" class="absolute inset-0 w-full h-full -rotate-90">
+              <circle class="ring-track" cx="100" cy="100" r="88" fill="none" stroke-width="5"/>
+              <circle id="pomoRing" class="ring-fill" cx="100" cy="100" r="88" fill="none" stroke="#79C8B4" stroke-width="5" stroke-linecap="round" stroke-dasharray="552.9" stroke-dashoffset="0"/>
+            </svg>
+            <div class="text-center">
+              <div id="pomoTime" class="font-mono tnum text-[46px] leading-none font-medium tracking-tighter">25:00</div>
+              <div id="pomoLabel" class="eyebrow text-faint mt-2">focus</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button id="pomoStart" class="tap flex-1 bg-dawn text-ink font-semibold rounded-xl py-3.5 disabled:opacity-30 disabled:cursor-not-allowed hover:brightness-110 active:scale-[.99] transition">Start</button>
+          <button id="pomoReset" class="tap px-5 rounded-xl border border-line text-muted hover:text-body hover:bg-raised transition" aria-label="Reset timer">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <div class="flex justify-center gap-6 mt-5 text-center">
+          <div><div id="statSessions" class="font-mono tnum text-lg">0</div><div class="eyebrow text-faint mt-1">sessions</div></div>
+          <div class="w-px bg-line"></div>
+          <div><div id="statMinutes" class="font-mono tnum text-lg">0</div><div class="eyebrow text-faint mt-1">clear minutes</div></div>
+        </div>
+      </div>
+
+      <!-- Cognitive log -->
+      <div class="card rounded-xl2 p-5">
+        <div class="flex items-center gap-2 mb-1">
+          <i data-lucide="brain" class="w-4 h-4 text-dawn"></i>
+          <h2 class="font-display font-semibold tracking-tight">Cognitive sovereignty log</h2>
+        </div>
+        <p class="text-xs text-faint mb-4 leading-relaxed">Rate the session honestly. Over a few weeks this log is the evidence against "I work better high."</p>
+
+        <div class="flex gap-1.5 mb-3" id="sharpScale"></div>
+        <textarea id="logNote" rows="3" placeholder="What did you actually get done, and how sharp did it feel?" class="w-full bg-ink/60 border border-line rounded-xl px-4 py-3 text-sm leading-relaxed placeholder:text-faint mb-3"></textarea>
+        <button id="logSave" class="tap w-full border border-line rounded-xl py-3 text-sm font-medium text-muted hover:text-body hover:bg-raised transition">Save entry</button>
+
+        <div id="logAvgWrap" class="mt-5 pt-5 border-t border-line flex items-baseline justify-between" hidden>
+          <span class="eyebrow text-faint">Average sharpness, sober</span>
+          <span id="logAvg" class="font-mono tnum text-2xl text-oxygen">—</span>
+        </div>
+        <div id="logList" class="mt-4 space-y-2"></div>
+      </div>
+    </section>
+
+    <!-- ══════════ BODY ══════════ -->
+    <section id="tab-body" data-tab class="space-y-4" hidden>
+      <div class="px-1 pb-1">
+        <p class="eyebrow text-oxygen mb-2">Dermal &amp; cellular oxygenation timeline</p>
+        <h1 class="font-display text-3xl font-extrabold tracking-tight leading-tight">Skin vibrancy &amp; cellular recovery</h1>
+        <p class="text-sm text-muted mt-2 leading-relaxed">What happens to your face once the hydrocarbons and carbon monoxide stop arriving.</p>
+      </div>
+
+      <div id="skinList" class="space-y-3"></div>
+
+      <div class="flex items-center gap-2 px-1 pt-6 pb-1">
+        <i data-lucide="activity" class="w-4 h-4 text-ember"></i>
+        <h2 class="font-display text-xl font-semibold tracking-tight">Withdrawal survival hub</h2>
+      </div>
+      <p class="text-sm text-muted px-1 mb-3 leading-relaxed">Open the one that's biting right now.</p>
+      <div id="symptomList" class="space-y-3"></div>
+    </section>
+
+    <!-- ══════════ LIFE ══════════ -->
+    <section id="tab-life" data-tab class="space-y-4" hidden>
+      <div class="px-1 pb-1">
+        <p class="eyebrow text-dawn mb-2">Life expectancy &amp; longevity reclaimed</p>
+        <h1 id="lifeHeadline" class="font-display text-3xl font-extrabold tracking-tight leading-tight">—</h1>
+      </div>
+
+      <div class="card rounded-xl2 p-6 text-center">
+        <p class="eyebrow text-faint mb-3">Recovery potential</p>
+        <div id="lifeYears" class="font-display text-[52px] leading-none font-extrabold tracking-tighter text-dawn">—</div>
+        <p class="font-display text-lg font-semibold tracking-tight mt-2">years of life expectancy reclaimed</p>
+        <p id="lifeExplain" class="text-xs text-faint mt-3 leading-relaxed max-w-sm mx-auto">—</p>
+        <p class="text-[10px] text-faint/60 mt-3 italic">Jha et al., NEJM 2013 — 21st-Century Hazards of Smoking and Benefits of Cessation</p>
+      </div>
+
+      <div class="card rounded-xl2 p-6">
+        <div class="flex items-center gap-2 mb-1">
+          <i data-lucide="hourglass" class="w-4 h-4 text-oxygen"></i>
+          <h2 class="font-display font-semibold tracking-tight">Real-time longevity counter</h2>
+        </div>
+        <p class="text-xs text-faint mb-5 leading-relaxed">Every minute you stay clear is a minute added back to the trajectory. Cellular ageing is reversing in real time.</p>
+        <div id="longevityMinutes" class="font-mono tnum text-[40px] leading-none font-medium tracking-tighter text-oxygen">0</div>
+        <p class="eyebrow text-faint mt-2">minutes reclaimed</p>
+        <div class="grid grid-cols-3 gap-3 mt-6 pt-5 border-t border-line text-center">
+          <div><div id="lgHours" class="font-mono tnum text-lg">0</div><div class="eyebrow text-faint mt-1">hours</div></div>
+          <div><div id="lgDays" class="font-mono tnum text-lg">0</div><div class="eyebrow text-faint mt-1">days</div></div>
+          <div><div id="lgWeeks" class="font-mono tnum text-lg">0</div><div class="eyebrow text-faint mt-1">weeks</div></div>
+        </div>
+      </div>
+
+      <div id="badgeList" class="space-y-3"></div>
+
+      <p class="text-[11px] text-faint leading-relaxed px-1 pt-2">These figures come from large cohort studies of tobacco smoking cessation. Long-term mortality data specific to cannabis smoking is far thinner, so treat the numbers as directional rather than precise — the mechanism you're removing, combustion smoke in the lungs, is the same either way.</p>
+    </section>
+
+    <!-- ══════════ YOU ══════════ -->
+    <section id="tab-you" data-tab class="space-y-4" hidden>
+      <div class="px-1 pb-1">
+        <p class="eyebrow text-dawn mb-2">Your file</p>
+        <h1 class="font-display text-3xl font-extrabold tracking-tight leading-tight">Why you quit at 32</h1>
+      </div>
+
+      <div class="card rounded-xl2 p-5">
+        <textarea id="whyEdit" rows="6" placeholder="The reason, in your own words." class="w-full bg-ink/60 border border-line rounded-xl px-4 py-3.5 text-[15px] leading-relaxed placeholder:text-faint"></textarea>
+        <button id="whySave" class="tap w-full mt-3 border border-line rounded-xl py-3 text-sm font-medium text-muted hover:text-body hover:bg-raised transition">Save statement</button>
+        <p class="text-xs text-faint mt-3 leading-relaxed">This is what appears in the last five minutes of a craving timer.</p>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div class="card rounded-xl2 p-4 text-center">
+          <div id="statCravings" class="font-mono tnum text-2xl text-oxygen">0</div>
+          <div class="eyebrow text-faint mt-1.5">cravings beaten</div>
+        </div>
+        <div class="card rounded-xl2 p-4 text-center">
+          <div id="statDopamine" class="font-mono tnum text-2xl text-dawn">0</div>
+          <div class="eyebrow text-faint mt-1.5">dopamine hits</div>
+        </div>
+        <div class="card rounded-xl2 p-4 text-center">
+          <div id="statLogs" class="font-mono tnum text-2xl">0</div>
+          <div class="eyebrow text-faint mt-1.5">log entries</div>
+        </div>
+      </div>
+
+      <div class="card rounded-xl2 p-5">
+        <h2 class="font-display font-semibold tracking-tight mb-1">Craving history</h2>
+        <p class="text-xs text-faint mb-4">Every one of these passed.</p>
+        <div id="cravingList" class="space-y-2"></div>
+      </div>
+
+      <div class="card rounded-xl2 p-5">
+        <h2 class="font-display font-semibold tracking-tight mb-1">Your age</h2>
+        <p class="text-xs text-faint mb-3">Drives the life-expectancy figures — the gain from quitting depends heavily on when you stop.</p>
+        <input id="ageEdit" type="number" min="13" max="100" inputmode="numeric" class="w-full bg-ink/60 border border-line rounded-xl px-3 py-3 text-sm font-mono tnum mb-3" />
+        <button id="ageSave" class="tap w-full border border-line rounded-xl py-3 text-sm font-medium text-muted hover:text-body hover:bg-raised transition">Update age</button>
+      </div>
+
+      <div class="card rounded-xl2 p-5">
+        <h2 class="font-display font-semibold tracking-tight mb-3">Quit timestamp</h2>
+        <input id="quitEdit" type="datetime-local" class="w-full bg-ink/60 border border-line rounded-xl px-3 py-3 text-sm font-mono tnum mb-3" />
+        <button id="quitSave" class="tap w-full border border-line rounded-xl py-3 text-sm font-medium text-muted hover:text-body hover:bg-raised transition">Update</button>
+      </div>
+
+      <div class="card rounded-xl2 p-5">
+        <h2 class="font-display font-semibold tracking-tight mb-3">Your data</h2>
+        <div class="flex gap-2">
+          <button id="exportBtn" class="tap flex-1 border border-line rounded-xl py-3 text-sm font-medium text-muted hover:text-body hover:bg-raised transition">Export JSON</button>
+          <button id="resetBtn" class="tap flex-1 border border-alarm/40 text-alarm/90 rounded-xl py-3 text-sm font-medium hover:bg-alarm/10 transition">Erase everything</button>
+        </div>
+        <p id="storageWarn" class="text-xs text-ember mt-3 leading-relaxed" hidden>Storage is blocked in this browser context, so progress will vanish on refresh. Download the file and open it locally to keep your data.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Panic button -->
+  <div class="fixed bottom-[86px] left-0 right-0 z-40 px-5 pointer-events-none">
+    <div class="max-w-5xl mx-auto">
+      <button id="panicBtn" class="tap pointer-events-auto w-full bg-ember text-ink font-semibold rounded-xl py-4 shadow-[0_8px_32px_-8px_rgba(229,162,92,.5)] flex items-center justify-center gap-2 hover:brightness-110 active:scale-[.99] transition">
+        <i data-lucide="flame" class="w-[18px] h-[18px]"></i>
+        <span class="tracking-tight">I want to smoke</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Bottom nav -->
+  <nav class="fixed bottom-0 left-0 right-0 z-40 safe-b bg-ink/90 backdrop-blur-xl border-t border-line">
+    <div class="max-w-5xl mx-auto grid grid-cols-5">
+      <button class="navbtn tap flex flex-col items-center gap-1 py-3 text-faint transition" data-goto="home">
+        <i data-lucide="radar" class="w-[18px] h-[18px]"></i><span class="text-[10px] font-medium">Today</span>
+      </button>
+      <button class="navbtn tap flex flex-col items-center gap-1 py-3 text-faint transition" data-goto="flow">
+        <i data-lucide="timer" class="w-[18px] h-[18px]"></i><span class="text-[10px] font-medium">Flow</span>
+      </button>
+      <button class="navbtn tap flex flex-col items-center gap-1 py-3 text-faint transition" data-goto="body">
+        <i data-lucide="heart-pulse" class="w-[18px] h-[18px]"></i><span class="text-[10px] font-medium">Body</span>
+      </button>
+      <button class="navbtn tap flex flex-col items-center gap-1 py-3 text-faint transition" data-goto="life">
+        <i data-lucide="infinity" class="w-[18px] h-[18px]"></i><span class="text-[10px] font-medium">Life</span>
+      </button>
+      <button class="navbtn tap flex flex-col items-center gap-1 py-3 text-faint transition" data-goto="you">
+        <i data-lucide="user-round" class="w-[18px] h-[18px]"></i><span class="text-[10px] font-medium">You</span>
+      </button>
+    </div>
+  </nav>
+</div>
+
+<!-- ══════════════ DOPAMINE MENU MODAL ══════════════ -->
+<div id="menuModal" class="fixed inset-0 z-[70] bg-ink/90 backdrop-blur-sm flex items-end sm:items-center justify-center" hidden>
+  <div class="w-full sm:max-w-md bg-surface border border-line rounded-t-3xl sm:rounded-xl2 p-6 max-h-[88vh] overflow-y-auto rise safe-b">
+    <div class="flex items-start justify-between mb-1">
+      <h2 class="font-display text-2xl font-extrabold tracking-tight">Pick your trigger</h2>
+      <button id="menuClose" class="tap text-faint hover:text-body transition p-1" aria-label="Close menu"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <p class="text-sm text-muted leading-relaxed mb-5">One of these, done before the timer runs. Your brain will make the dopamine itself.</p>
+    <div id="menuOptions" class="space-y-2 mb-5"></div>
+    <button id="menuConfirm" class="tap w-full bg-oxygen text-ink font-semibold rounded-xl py-4 disabled:opacity-30 disabled:cursor-not-allowed hover:brightness-110 transition">Done — unlock the timer</button>
+  </div>
+</div>
+
+<!-- ══════════════ 15-MINUTE RULE OVERLAY ══════════════ -->
+<div id="panicOverlay" class="fixed inset-0 z-[90] bg-ink flex flex-col" hidden>
+  <div class="flex-1 flex flex-col items-center justify-center px-6 py-8 max-w-lg mx-auto w-full">
+
+    <p class="eyebrow text-ember mb-6">The 15-minute rule</p>
+
+    <div class="relative w-[268px] h-[268px] flex items-center justify-center mb-8">
+      <svg viewBox="0 0 260 260" class="absolute inset-0 w-full h-full -rotate-90">
+        <circle class="ring-track" cx="130" cy="130" r="120" fill="none" stroke-width="4"/>
+        <circle id="panicRing" class="ring-fill" cx="130" cy="130" r="120" fill="none" stroke="#E5A25C" stroke-width="4" stroke-linecap="round" stroke-dasharray="753.98" stroke-dashoffset="0"/>
+      </svg>
+      <div class="text-center">
+        <div id="panicTime" class="font-mono tnum text-[64px] leading-none font-medium tracking-tighter">15:00</div>
+        <div class="eyebrow text-faint mt-2">until this passes</div>
+      </div>
+    </div>
+
+    <p id="panicInstruction" class="text-center font-display text-xl font-semibold leading-snug tracking-tight mb-6 min-h-[3.5rem]"></p>
+
+    <div id="panicWhyBox" class="w-full card rounded-xl2 p-5 mb-4" hidden>
+      <p class="eyebrow text-dawn mb-2">Why you quit at 32</p>
+      <p id="panicWhy" class="text-[15px] leading-relaxed"></p>
+    </div>
+
+    <div id="panicNoteBox" class="w-full mb-4" hidden>
+      <textarea id="panicNote" rows="3" placeholder="How does this feel right now? Write it down." class="w-full bg-raised border border-line rounded-xl px-4 py-3 text-sm leading-relaxed placeholder:text-faint"></textarea>
+    </div>
+
+    <div class="w-full border border-alarm/30 bg-alarm/[.07] rounded-xl px-4 py-3 flex gap-3 items-start">
+      <i data-lucide="triangle-alert" class="w-4 h-4 text-alarm shrink-0 mt-0.5"></i>
+      <p class="text-[13px] text-alarm/90 leading-relaxed">Do not substitute this craving with alcohol. A hangover lowers inhibitions and causes a relapse tomorrow.</p>
+    </div>
+
+    <div class="w-full mt-6 space-y-2">
+      <button id="panicDone" class="tap w-full bg-oxygen text-ink font-semibold rounded-xl py-4 hover:brightness-110 transition" hidden>I made it — log this</button>
+      <button id="panicExit" class="tap w-full text-center text-xs text-faint hover:text-muted py-2 transition" hidden>Leave early</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" data-toast class="fixed bottom-[160px] left-1/2 -translate-x-1/2 z-[95] bg-raised border border-line text-sm px-5 py-3 rounded-full shadow-2xl transition-all duration-300 opacity-0 translate-y-3 pointer-events-none"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
