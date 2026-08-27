@@ -4,8 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0A0E14" />
-<meta name="description" content="A quiet, private tracker for the first ten years without smoke." />
-<title>Clearance — Day 1</title>
+<meta name="description" content="A quiet, private tracker for your time without smoke. Everything stays on your phone." />
+<title>E Don Do — Day 1</title>
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
@@ -119,24 +121,37 @@ tailwind.config = {
 <!-- ══════════════ ONBOARDING ══════════════ -->
 <div id="onboard" class="fixed inset-0 z-[80] bg-ink flex items-center justify-center p-6" hidden>
   <div class="w-full max-w-md rise">
-    <p class="eyebrow text-dawn mb-3">Clearance</p>
-    <h1 class="font-display text-4xl font-extrabold leading-[1.05] tracking-tight mb-3">Ten years of smoke stops being your baseline today.</h1>
-    <p class="text-muted text-sm leading-relaxed mb-8">This runs entirely on your device. Nothing is uploaded, nothing is shared, no account required.</p>
+    <p class="eyebrow text-dawn mb-3">E Don Do</p>
+    <h1 class="font-display text-4xl font-extrabold leading-[1.05] tracking-tight mb-3">Today is the day it stops being normal.</h1>
+    <p class="text-muted text-sm leading-relaxed mb-8">Everything stays on this phone. Nothing is sent anywhere, nothing is shared, and you do not need an account.</p>
 
-    <label class="block mb-2 eyebrow text-faint">When did the last one end?</label>
+    <label class="block mb-2 eyebrow text-faint">When did you last smoke?</label>
     <div class="flex gap-2 mb-6">
       <input id="onboardTime" type="datetime-local" class="flex-1 bg-raised border border-line rounded-xl px-3 py-3 text-sm font-mono tnum" />
-      <button id="onboardNow" class="tap px-4 rounded-xl border border-line text-sm text-dawn hover:bg-raised transition">Now</button>
+      <button id="onboardNow" class="tap px-4 rounded-xl border border-line text-sm text-dawn hover:bg-raised transition">Just now</button>
     </div>
 
-    <label class="block mb-2 eyebrow text-faint">Your age</label>
-    <input id="onboardAge" type="number" min="13" max="100" inputmode="numeric" placeholder="32"
+    <label class="block mb-2 eyebrow text-faint">How old are you?</label>
+    <input id="onboardAge" type="number" min="10" max="100" inputmode="numeric" placeholder="32"
+      class="w-full bg-raised border border-line rounded-xl px-4 py-3 text-sm font-mono tnum placeholder:text-faint mb-2" />
+    <p class="text-[11px] text-faint mb-6 leading-relaxed">This decides which facts the app shows you. What matters at 16 is not what matters at 40.</p>
+
+    <label class="block mb-2 eyebrow text-faint">How old were you when you started?</label>
+    <input id="onboardStartAge" type="number" min="5" max="100" inputmode="numeric" placeholder="19"
       class="w-full bg-raised border border-line rounded-xl px-4 py-3 text-sm font-mono tnum placeholder:text-faint mb-6" />
 
-    <label class="block mb-2 eyebrow text-faint">Why you quit</label>
-    <textarea id="onboardWhy" rows="4" placeholder="Write it the way you'd say it out loud at 2am. You'll read this back when it counts." class="w-full bg-raised border border-line rounded-xl px-4 py-3 text-sm leading-relaxed placeholder:text-faint mb-6"></textarea>
+    <label class="block mb-2 eyebrow text-faint">How many years were you smoking?</label>
+    <input id="onboardYears" type="number" min="0" max="80" step="0.5" inputmode="decimal" placeholder="10"
+      class="w-full bg-raised border border-line rounded-xl px-4 py-3 text-sm font-mono tnum placeholder:text-faint mb-2" />
+    <p class="text-[11px] text-faint mb-6 leading-relaxed">A rough number is fine. This sets the length of your recovery bar.</p>
 
+    <label class="block mb-2 eyebrow text-faint">Why are you stopping?</label>
+    <textarea id="onboardWhy" rows="4" placeholder="Say it the way you would say it out loud. You will read this back on a hard night." class="w-full bg-raised border border-line rounded-xl px-4 py-3 text-sm leading-relaxed placeholder:text-faint mb-2"></textarea>
+    <p class="text-[11px] text-faint mb-6 leading-relaxed">You can skip this and add it later on the You tab.</p>
+
+    <p id="onboardError" class="text-[12px] text-alarm mb-3 leading-relaxed" hidden></p>
     <button id="onboardStart" class="tap w-full bg-dawn text-ink font-semibold rounded-xl py-4 hover:brightness-110 active:scale-[.99] transition">Start the clock</button>
+    <p class="text-[11px] text-faint mt-4 leading-relaxed text-center">E Don Do gives you information and tools. It is not medical advice and does not replace a doctor or a counsellor.</p>
   </div>
 </div>
 
@@ -151,7 +166,7 @@ tailwind.config = {
           <span class="pulse-ring absolute inline-flex h-full w-full rounded-full bg-oxygen"></span>
           <span class="relative inline-flex rounded-full h-2 w-2 bg-oxygen"></span>
         </span>
-        <span class="font-display font-semibold tracking-tight text-[15px]">Clearance</span>
+        <span class="font-display font-semibold tracking-tight text-[15px]">E Don Do</span>
       </div>
       <div class="flex items-center gap-4">
         <div class="text-right leading-none">
@@ -170,7 +185,7 @@ tailwind.config = {
     <!-- ══════════ HOME ══════════ -->
     <section id="tab-home" data-tab class="space-y-4">
 
-      <!-- SIGNATURE: breathing clearance dial -->
+      <!-- SIGNATURE: breathing recovery dial -->
       <div class="relative card rounded-xl2 px-6 pt-8 pb-7 overflow-hidden">
         <div class="flex flex-col items-center">
           <div class="relative w-[248px] h-[248px] flex items-center justify-center">
@@ -212,11 +227,11 @@ tailwind.config = {
         <div class="flex items-start justify-between mb-1">
           <div class="flex items-center gap-2">
             <i data-lucide="route" class="w-4 h-4 text-dawn"></i>
-            <h2 class="font-display font-semibold tracking-tight">The ten-year arc</h2>
+            <h2 id="arcTitle" class="font-display font-semibold tracking-tight">The recovery arc</h2>
           </div>
           <span id="arcPos" class="font-mono tnum text-sm text-dawn">Day 1</span>
         </div>
-        <p class="text-xs text-faint mb-6">Ten years of smoking, mapped against ten years of undoing it</p>
+        <p id="arcCaption" class="text-xs text-faint mb-6">Your time smoking, mapped against the time undoing it</p>
 
         <div class="relative h-2 rounded-full bg-line mb-1">
           <div id="arcBar" class="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-dawn/50 to-dawn transition-all duration-700" style="width:0%"></div>
@@ -343,9 +358,9 @@ tailwind.config = {
       <div class="card rounded-xl2 p-6 text-center">
         <p class="eyebrow text-faint mb-3">Recovery potential</p>
         <div id="lifeYears" class="font-display text-[52px] leading-none font-extrabold tracking-tighter text-dawn">—</div>
-        <p class="font-display text-lg font-semibold tracking-tight mt-2">years of life expectancy reclaimed</p>
+        <p id="lifeUnit" class="font-display text-lg font-semibold tracking-tight mt-2">years of life expectancy reclaimed</p>
         <p id="lifeExplain" class="text-xs text-faint mt-3 leading-relaxed max-w-sm mx-auto">—</p>
-        <p class="text-[10px] text-faint/60 mt-3 italic">Jha et al., NEJM 2013 — 21st-Century Hazards of Smoking and Benefits of Cessation</p>
+        <p id="lifeSrc" class="text-[10px] text-faint/60 mt-3 italic">Jha et al., NEJM 2013 — 21st-Century Hazards of Smoking and Benefits of Cessation</p>
       </div>
 
       <div class="card rounded-xl2 p-6">
@@ -404,9 +419,23 @@ tailwind.config = {
 
       <div class="card rounded-xl2 p-5">
         <h2 class="font-display font-semibold tracking-tight mb-1">Your age</h2>
-        <p class="text-xs text-faint mb-3">Drives the life-expectancy figures — the gain from quitting depends heavily on when you stop.</p>
-        <input id="ageEdit" type="number" min="13" max="100" inputmode="numeric" class="w-full bg-ink/60 border border-line rounded-xl px-3 py-3 text-sm font-mono tnum mb-3" />
+        <p class="text-xs text-faint mb-3">Decides which facts the app shows you. What matters at 16 is not what matters at 40.</p>
+        <input id="ageEdit" type="number" min="10" max="100" inputmode="numeric" class="w-full bg-ink/60 border border-line rounded-xl px-3 py-3 text-sm font-mono tnum mb-3" />
         <button id="ageSave" class="tap w-full border border-line rounded-xl py-3 text-sm font-medium text-muted hover:text-body hover:bg-raised transition">Update age</button>
+      </div>
+
+      <div class="card rounded-xl2 p-5">
+        <h2 class="font-display font-semibold tracking-tight mb-1">When you started</h2>
+        <p class="text-xs text-faint mb-3">Starting before 18 changes what the research says, so the app says something different too.</p>
+        <input id="startAgeEdit" type="number" min="5" max="100" inputmode="numeric" class="w-full bg-ink/60 border border-line rounded-xl px-3 py-3 text-sm font-mono tnum mb-3" />
+        <button id="startAgeSave" class="tap w-full border border-line rounded-xl py-3 text-sm font-medium text-muted hover:text-body hover:bg-raised transition">Update starting age</button>
+      </div>
+
+      <div class="card rounded-xl2 p-5">
+        <h2 class="font-display font-semibold tracking-tight mb-1">Years you smoked</h2>
+        <p class="text-xs text-faint mb-3">Sets the length of your recovery bar. A rough number is fine.</p>
+        <input id="yearsEdit" type="number" min="0" max="80" step="0.5" inputmode="decimal" class="w-full bg-ink/60 border border-line rounded-xl px-3 py-3 text-sm font-mono tnum mb-3" />
+        <button id="yearsSave" class="tap w-full border border-line rounded-xl py-3 text-sm font-medium text-muted hover:text-body hover:bg-raised transition">Update years</button>
       </div>
 
       <div class="card rounded-xl2 p-5">
@@ -516,18 +545,27 @@ tailwind.config = {
 
 <script>
 /* ===========================================================
-   Clearance — day-one recovery tracker
+   E Don Do — day-one recovery tracker
    Local-only. No network calls, no account, no telemetry.
+
+   The no-backend rule is not a preference. Under the Nigeria
+   Data Protection Act 2023 anyone under 18 is a child, and
+   under-13s cannot consent to processing at all. Because
+   nothing ever leaves the device there is no controller and
+   no children's data to protect. Adding a backend would
+   create that obligation retroactively, for every minor
+   already using the app. Do not add one.
    =========================================================== */
 
 const $  = (s, r = document) => r.querySelector(s);
-const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const $ = (s, r = document) => [...r.querySelectorAll(s)];
 
 const MIN = 60_000, HOUR = 3_600_000, DAY = 86_400_000;
 const WEEK = 7 * DAY, MONTH = 30 * DAY, YEAR = 365.25 * DAY;
 
 /* ---------------- storage (degrades to memory) ---------------- */
-const KEY = 'clearance.v1';
+const KEY = 'edondo.v1';
+const SCHEMA = 1;   // bump when a field changes meaning, then migrate in load()
 let storageOK = true;
 try {
   localStorage.setItem('__probe', '1');
@@ -537,8 +575,11 @@ try {
 let memory = null;
 
 const defaults = () => ({
+  schema: SCHEMA,
   quitTs: null,
-  age: null,
+  age: null,         // age now, drives which argument the app makes
+  startAge: null,    // age at first use — under 18 changes the content profile
+  yearsSmoked: null, // how long the habit ran; drives the arc, not age
   why: '',
   logs: [],          // { ts, sharpness, note }
   cravings: [],      // { ts, survived, note }
@@ -548,11 +589,24 @@ const defaults = () => ({
   gateUnlockedFor: null
 });
 
+/* Migrations run oldest-first. Each one takes the stored blob and returns it
+   one version newer. There are no v0 users in the wild, so this is empty —
+   but the hook exists so the next schema change costs a function, not a release. */
+const MIGRATIONS = {
+  // 1: s => ({ ...s, newField: derive(s) }),
+};
+
+function migrate(stored) {
+  let s = stored, from = s.schema ?? 0;
+  while (from < SCHEMA && MIGRATIONS[from]) { s = MIGRATIONS[from](s); from++; }
+  return { ...defaults(), ...s, schema: SCHEMA };
+}
+
 function load() {
   if (!storageOK) return memory ?? (memory = defaults());
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? { ...defaults(), ...JSON.parse(raw) } : defaults();
+    return raw ? migrate(JSON.parse(raw)) : defaults();
   } catch { return defaults(); }
 }
 
@@ -663,14 +717,37 @@ const SKIN = [
 /* Years of life gained by quitting, by age at cessation.
    Jha et al., NEJM 2013 (n=202,248): quitting at 25–34 gained ~10 years,
    35–44 ~9, 45–54 ~6, 55–64 ~4, versus continuing to smoke. */
+/* Jha 2013 studied adults. Its youngest cohort is 25–34, so there is no honest
+   life-expectancy number to quote at anyone below 25 — the old table had no floor
+   and filed a 13-year-old under "25–34", which was simply wrong.
+
+   Under 25 the app makes a different argument entirely (see PROFILES): the payoff
+   that matters at that age is neurological, not actuarial. `years: null` means
+   "no figure exists for this band" and renderLife must not print one. */
 const AGE_BANDS = [
-  { max: 34, years: 10, band: '25–34' },
-  { max: 44, years: 9,  band: '35–44' },
-  { max: 54, years: 6,  band: '45–54' },
-  { max: 64, years: 4,  band: '55–64' },
-  { max: 200, years: 3, band: '65+'   }
+  { min: 0,  max: 17,  years: null, band: 'under 18', profile: 'teen'  },
+  { min: 18, max: 24,  years: null, band: '18–24',    profile: 'young' },
+  { min: 25, max: 34,  years: 10,   band: '25–34',    profile: 'adult' },
+  { min: 35, max: 44,  years: 9,    band: '35–44',    profile: 'adult' },
+  { min: 45, max: 54,  years: 6,    band: '45–54',    profile: 'adult' },
+  { min: 55, max: 64,  years: 4,    band: '55–64',    profile: 'adult' },
+  { min: 65, max: 200, years: 3,    band: '65+',      profile: 'adult' }
 ];
-const ageBand = age => AGE_BANDS.find(b => age <= b.max) || AGE_BANDS[AGE_BANDS.length - 1];
+
+function ageBand(age) {
+  const n = Number(age);
+  if (!isFinite(n) || n <= 0) return null;
+  return AGE_BANDS.find(b => n >= b.min && n <= b.max) || AGE_BANDS[AGE_BANDS.length - 1];
+}
+
+/* Which case the app makes. Age at first use outranks current age: a 26-year-old
+   who started at 14 took the developmental hit, and should be told so. */
+function profileFor(state) {
+  const band = ageBand(state.age);
+  if (band && band.profile === 'teen') return 'teen';
+  if (state.startAge && Number(state.startAge) < 18) return 'earlyStart';
+  return band ? band.profile : 'adult';
+}
 
 const BADGES = [
   { at: 3 * YEAR, name: 'Excess risk largely averted',
@@ -820,19 +897,45 @@ function phaseCopy(t) {
 
 
 /* ---------------- age-driven life expectancy ---------------- */
+const JHA_SRC = 'Jha et al., NEJM 2013 — 21st-Century Hazards of Smoking and Benefits of Cessation';
+const YOUTH_SRC = 'Psychological Medicine, age-dependent association of cannabis use with psychotic disorder; J Dual Diagnosis 2023';
+
 function renderLife() {
   const age = state.age;
   const el = $('#lifeYears'), hd = $('#lifeHeadline'), ex = $('#lifeExplain');
+  const unit = $('#lifeUnit'), src = $('#lifeSrc');
 
   if (!age) {
     el.textContent = '—';
+    unit.textContent = 'years of life expectancy reclaimed';
+    src.textContent = JHA_SRC;
     hd.textContent = 'Add your age to see what quitting bought you.';
-    ex.textContent = 'The size of the gain depends almost entirely on the age you stop. Set it on the You tab.';
+    ex.textContent = 'What you get back depends almost entirely on the age you stop. Set it on the You tab.';
     return;
   }
 
   const b = ageBand(age);
+
+  /* No life-expectancy figure exists below 25 — the cessation cohorts start there.
+     Quoting one anyway would be inventing a number, so we make the argument that
+     actually applies at this age instead. */
+  if (!b.years) {
+    const early = profileFor(state) === 'teen' || (state.startAge && Number(state.startAge) < 18);
+    el.textContent = '2×';
+    unit.textContent = 'the risk you are stepping away from';
+    src.textContent = YOUTH_SRC;
+    hd.textContent = early
+      ? 'You started young. That is exactly why stopping now counts.'
+      : 'You are young enough that this is about your brain, not your lifespan.';
+    ex.textContent = early
+      ? 'Research finds the risk of developing a psychotic disorder roughly doubles when cannabis use starts before ages 16 to 18, and that earlier starts are linked to earlier, more severe symptoms. The brain is still pruning and myelinating through adolescence, and the endocannabinoid system helps run both. The product also changed: cannabis ran 3 to 4 percent THC in earlier decades and runs 15 to 25 percent now. Stopping while that development is still underway is the whole point.'
+      : 'The life-expectancy figures on this screen come from cessation studies of adults 25 and older, so there is no honest number to give you yet. What the research does show at your age is that risk of a psychotic disorder is roughly doubled when use begins before 16 to 18, and that today’s cannabis is several times stronger than what earlier generations used. Stopping now is the version of this decision with the most left to gain.';
+    return;
+  }
+
   el.textContent = '~' + b.years;
+  unit.textContent = 'years of life expectancy reclaimed';
+  src.textContent = JHA_SRC;
 
   if (age < 40) {
     hd.textContent = 'You quit before 40. That is the whole ballgame.';
@@ -846,12 +949,25 @@ function renderLife() {
   }
 }
 
-/* ---------------- ten-year arc ---------------- */
-/* Linear time over ten years puts day 1 at 0.03% — invisible, and demoralising on
-   the exact day it matters most. A log scale keeps early progress legible while
-   still showing how much of the decade is left. */
-const ARC_MAX = Math.log(1 + 3653);
-const arcPct = t => clamp01(Math.log(1 + t / DAY) / ARC_MAX) * 100;
+/* ---------------- the recovery arc ---------------- */
+/* Linear time puts day 1 at 0.03% — invisible, and demoralising on the exact day
+   it matters most. A log scale keeps early progress legible while still showing
+   how much of the span is left.
+
+   The span is how long the habit ran, NOT the user's age. Someone who smoked two
+   years sees a two-year arc. Floored at 2 years because ARC_STOPS carries a stop
+   at the two-year mark, and capped at 10 because the content stops there — the
+   last badge is at ten years. */
+const ARC_MIN_YEARS = 2, ARC_MAX_YEARS = 10;
+
+function arcSpanYears() {
+  const y = state.yearsSmoked;
+  if (!y || !isFinite(y) || y <= 0) return ARC_MAX_YEARS;   // unknown: assume the full span
+  return Math.min(ARC_MAX_YEARS, Math.max(ARC_MIN_YEARS, y));
+}
+
+const arcSpanDays = () => arcSpanYears() * 365.25;
+const arcPct = t => clamp01(Math.log(1 + t / DAY) / Math.log(1 + arcSpanDays())) * 100;
 
 const ARC_STOPS = [
   { at: 2 * WEEK,  short: 'Wk 1–2', full: 'Cilia awakening & tar clearance' },
@@ -861,16 +977,27 @@ const ARC_STOPS = [
 ];
 
 function renderArc() {
-  $('#arcTicks').innerHTML = ARC_STOPS.map(s => {
+  const years = arcSpanYears();
+  const spanMs = arcSpanDays() * DAY;
+  const stops = ARC_STOPS.filter(s => s.at <= spanMs);   // never label past the end of the bar
+
+  const n = years % 1 ? years.toFixed(1) : String(years);
+  const plural = years === 1 ? 'year' : 'years';
+  $('#arcTitle').textContent = `The ${n}-year arc`;
+  $('#arcCaption').textContent = state.yearsSmoked
+    ? `${n} ${plural} of smoking, mapped against ${n} ${plural} of undoing it`
+    : 'Your recovery so far. Add how long you smoked on the You tab to scale this properly.';
+
+  $('#arcTicks').innerHTML = stops.map(s => {
     const done = elapsed() >= s.at;
     return `<span class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-1 h-4 rounded-full ${done ? 'bg-oxygen' : 'bg-faint/50'}"
       style="left:${arcPct(s.at).toFixed(2)}%"></span>`;
   }).join('');
 
-  $('#arcLabels').innerHTML = ARC_STOPS.map((s, i) => {
+  $('#arcLabels').innerHTML = stops.map((s, i) => {
     const done = elapsed() >= s.at;
     const p = arcPct(s.at);
-    const align = i === 0 ? 'translate-x-0 text-left' : i === ARC_STOPS.length - 1 ? '-translate-x-full text-right' : '-translate-x-1/2 text-center';
+    const align = i === 0 ? 'translate-x-0 text-left' : i === stops.length - 1 ? '-translate-x-full text-right' : '-translate-x-1/2 text-center';
     return `<span class="absolute top-0 ${align} w-24" style="left:${p.toFixed(2)}%">
       <span class="block font-mono tnum text-[10px] ${done ? 'text-oxygen' : 'text-faint'}">${s.short}</span>
       <span class="block text-[9px] leading-tight mt-0.5 ${done ? 'text-muted' : 'text-faint/60'}">${s.full}</span>
@@ -937,7 +1064,7 @@ function tick() {
   $('#lgDays').textContent  = group(Math.floor(t / DAY));
   $('#lgWeeks').textContent = group(Math.floor(t / WEEK));
 
-  $$('[data-badge-countdown]').forEach(el => {
+  $('[data-badge-countdown]').forEach(el => {
     const at = Number(el.dataset.badgeCountdown);
     el.textContent = t >= at ? 'Unlocked' : fmtCountdown(at - t);
   });
@@ -959,15 +1086,15 @@ function slowTick() {
 
 /* ---------------- navigation ---------------- */
 function goto(tab) {
-  $$('[data-tab]').forEach(s => s.hidden = s.id !== 'tab-' + tab);
-  $$('.navbtn').forEach(b => {
+  $('[data-tab]').forEach(s => s.hidden = s.id !== 'tab-' + tab);
+  $('.navbtn').forEach(b => {
     const on = b.dataset.goto === tab;
     b.classList.toggle('text-dawn', on);
     b.classList.toggle('text-faint', !on);
   });
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
-$$('[data-goto]').forEach(b => b.addEventListener('click', () => goto(b.dataset.goto)));
+$('[data-goto]').forEach(b => b.addEventListener('click', () => goto(b.dataset.goto)));
 
 /* ---------------- dopamine gate + pomodoro ---------------- */
 let chosenActivity = null;
@@ -988,7 +1115,7 @@ function renderMenu(selected = -1) {
   }).join('');
   icons();
 
-  $$('#menuOptions [data-opt]').forEach(btn => {
+  $('#menuOptions [data-opt]').forEach(btn => {
     btn.addEventListener('click', () => {
       const i = +btn.dataset.opt;
       chosenActivity = DOPAMINE_MENU[i].name;
@@ -1043,17 +1170,17 @@ function paintPomo() {
   $('#pomoRing').setAttribute('stroke', mode === 'work' ? '#79C8B4' : '#8FB8E8');
   $('#pomoLabel').textContent = mode === 'work' ? 'focus' : 'recover';
   $('#pomoStart').textContent = running ? 'Pause' : 'Start';
-  document.title = running ? `${pad(mm)}:${pad(ss)} — Clearance` : 'Clearance';
+  document.title = running ? `${pad(mm)}:${pad(ss)} — E Don Do` : 'E Don Do';
 }
 
 function setMode(m) {
   mode = m; running = false; clearInterval(pomoInterval);
   remaining = durations[m];
-  $$('.seg').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === m)));
+  $('.seg').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === m)));
   refreshGate();
   paintPomo();
 }
-$$('.seg').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+$('.seg').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
 
 function finishPomo() {
   clearInterval(pomoInterval); running = false;
@@ -1089,7 +1216,7 @@ function renderScale() {
   $('#sharpScale').innerHTML = [1, 2, 3, 4, 5].map(n => `
     <button data-sharp="${n}" class="tap flex-1 py-2.5 rounded-lg border text-sm font-mono tnum transition
       ${n === sharpness ? 'border-dawn bg-dawn/10 text-dawn' : 'border-line text-faint hover:text-muted'}">${n}</button>`).join('');
-  $$('[data-sharp]').forEach(b => b.addEventListener('click', () => {
+  $('[data-sharp]').forEach(b => b.addEventListener('click', () => {
     sharpness = +b.dataset.sharp; renderScale();
   }));
 }
@@ -1156,8 +1283,21 @@ $('#whySave').addEventListener('click', () => {
 });
 $('#ageSave').addEventListener('click', () => {
   const v = parseInt($('#ageEdit').value, 10);
-  if (!v || v < 13 || v > 100) { toast('Enter an age between 13 and 100'); return; }
-  state.age = v; save(); renderLife(); toast('Age updated');
+  if (!isFinite(v) || v < 10 || v > 100) { toast('Enter an age between 10 and 100'); return; }
+  if (state.startAge && v < state.startAge) { toast('That is younger than the age you started'); return; }
+  state.age = v; save(); renderLife(); renderMilestones(); toast('Age updated');
+});
+$('#startAgeSave').addEventListener('click', () => {
+  const v = parseInt($('#startAgeEdit').value, 10);
+  if (!isFinite(v) || v < 5 || v > 100) { toast('Enter a starting age between 5 and 100'); return; }
+  if (state.age && v > state.age) { toast('You cannot have started older than you are now'); return; }
+  state.startAge = v; save(); renderLife(); toast('Starting age updated');
+});
+$('#yearsSave').addEventListener('click', () => {
+  const v = parseFloat($('#yearsEdit').value);
+  if (!isFinite(v) || v < 0 || v > 80) { toast('Enter how many years, between 0 and 80'); return; }
+  if (state.age && v > state.age) { toast('That is more years than you have been alive'); return; }
+  state.yearsSmoked = v; save(); renderArc(); tick(); toast('Recovery bar updated');
 });
 $('#quitSave').addEventListener('click', () => {
   const v = $('#quitEdit').value;
@@ -1171,7 +1311,7 @@ $('#exportBtn').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `clearance-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `edondo-${new Date().toISOString().slice(0, 10)}.json`;
   a.click(); URL.revokeObjectURL(a.href);
 });
 $('#resetBtn').addEventListener('click', () => {
@@ -1257,11 +1397,44 @@ $('#panicExit').addEventListener('click', () => {
 $('#onboardNow').addEventListener('click', () => {
   $('#onboardTime').value = toLocalInput(Date.now());
 });
+/* Validation the first version did not have: a future quit time was silently
+   snapped to now, and any age at all was accepted. Both now say what is wrong
+   and how to fix it, rather than quietly doing something else. */
+function onboardError(msg) {
+  const el = $('#onboardError');
+  if (!msg) { el.hidden = true; return false; }
+  el.textContent = msg;
+  el.hidden = false;
+  return true;
+}
+
 $('#onboardStart').addEventListener('click', () => {
   const v = $('#onboardTime').value;
   const ts = v ? new Date(v).getTime() : Date.now();
+  const age = parseInt($('#onboardAge').value, 10);
+  const startAge = parseInt($('#onboardStartAge').value, 10);
+  const years = parseFloat($('#onboardYears').value);
+
+  if (v && !isFinite(ts))
+    return onboardError('That date did not read properly. Pick it again, or tap "Just now".');
+  if (ts > Date.now() + MIN)
+    return onboardError('That time is in the future. Pick when you actually last smoked.');
+  if ($('#onboardAge').value && (!isFinite(age) || age < 10 || age > 100))
+    return onboardError('Enter an age between 10 and 100.');
+  if ($('#onboardStartAge').value && (!isFinite(startAge) || startAge < 5 || startAge > 100))
+    return onboardError('Enter a starting age between 5 and 100.');
+  if (isFinite(age) && isFinite(startAge) && startAge > age)
+    return onboardError('You cannot have started at an age older than you are now.');
+  if ($('#onboardYears').value && (!isFinite(years) || years < 0 || years > 80))
+    return onboardError('Enter how many years, between 0 and 80.');
+  if (isFinite(age) && isFinite(years) && years > age)
+    return onboardError('That is more years of smoking than you have been alive.');
+
+  onboardError(null);
   state.quitTs = Math.min(ts, Date.now());
-  state.age = parseInt($('#onboardAge').value, 10) || null;
+  state.age = isFinite(age) ? age : null;
+  state.startAge = isFinite(startAge) ? startAge : null;
+  state.yearsSmoked = isFinite(years) ? years : null;
   state.why = $('#onboardWhy').value.trim();
   save();
   boot();
@@ -1278,9 +1451,11 @@ function boot() {
   }
   $('#onboard').hidden = true;
   $('#shell').hidden = false;
-  $('#whyEdit').value = state.why || '';
-  $('#ageEdit').value  = state.age || '';
-  $('#quitEdit').value = toLocalInput(state.quitTs);
+  $('#whyEdit').value      = state.why || '';
+  $('#ageEdit').value      = state.age || '';
+  $('#startAgeEdit').value = state.startAge || '';
+  $('#yearsEdit').value    = state.yearsSmoked ?? '';
+  $('#quitEdit').value     = toLocalInput(state.quitTs);
   $('#storageWarn').hidden = storageOK;
 
   goto('home');
@@ -1310,7 +1485,12 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !$('#menuModal').hidden) $('#menuModal').hidden = true;
 });
 
-/* Service worker omitted in the single-file build. */
+/* ---------------- PWA ---------------- */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
 
 </script>
 </body>

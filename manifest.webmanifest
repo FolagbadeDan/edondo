@@ -1,7 +1,7 @@
 {
-  "name": "Clearance — recovery tracker",
-  "short_name": "Clearance",
-  "description": "A private, offline tracker for the first ten years without smoke.",
+  "name": "E Don Do — recovery tracker",
+  "short_name": "E Don Do",
+  "description": "A private, offline tracker for your time without smoke. Nothing leaves your phone.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

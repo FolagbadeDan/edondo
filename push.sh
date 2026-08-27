@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Push Clearance to a GitHub repo you have already created (empty, no README).
+# Push E Don Do to a GitHub repo you have already created (empty, no README).
 #
 #   chmod +x push.sh
-#   ./push.sh https://github.com/YOUR-USERNAME/clearance.git
+#   ./push.sh https://github.com/YOUR-USERNAME/edondo.git
 #
 set -euo pipefail
 
 REMOTE="${1:-}"
 if [ -z "$REMOTE" ]; then
   echo "Usage: ./push.sh <your-repo-url>"
-  echo "Example: ./push.sh https://github.com/dan/clearance.git"
+  echo "Example: ./push.sh https://github.com/dan/edondo.git"
   exit 1
 fi
 
@@ -34,7 +34,7 @@ if ! git config user.email >/dev/null 2>&1; then
 fi
 
 git add -A
-git commit -qm "Clearance: offline cannabis recovery tracker" || echo "Nothing new to commit."
+git commit -qm "E Don Do: offline cannabis recovery tracker" || echo "Nothing new to commit."
 
 git branch -M main
 

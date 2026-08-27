@@ -1,5 +1,5 @@
-/* Clearance service worker — cache-first shell so the app works with no signal. */
-const CACHE = 'clearance-v1';
+/* E Don Do service worker — cache-first shell so the app works with no signal. */
+const CACHE = 'edondo-v1';
 const SHELL = [
   './',
   './index.html',

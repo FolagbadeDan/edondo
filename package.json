@@ -1,0 +1,11 @@
+{
+  "name": "edondo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "E Don Do — a private, offline tracker for stopping cannabis. Nothing leaves the device.",
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\"",
+    "build": "node build.mjs",
+    "serve": "python -m http.server 8080"
+  }
+}

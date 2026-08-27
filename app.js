@@ -1,6 +1,14 @@
 /* ===========================================================
-   Clearance — day-one recovery tracker
+   E Don Do — day-one recovery tracker
    Local-only. No network calls, no account, no telemetry.
+
+   The no-backend rule is not a preference. Under the Nigeria
+   Data Protection Act 2023 anyone under 18 is a child, and
+   under-13s cannot consent to processing at all. Because
+   nothing ever leaves the device there is no controller and
+   no children's data to protect. Adding a backend would
+   create that obligation retroactively, for every minor
+   already using the app. Do not add one.
    =========================================================== */
 
 const $  = (s, r = document) => r.querySelector(s);
@@ -10,7 +18,8 @@ const MIN = 60_000, HOUR = 3_600_000, DAY = 86_400_000;
 const WEEK = 7 * DAY, MONTH = 30 * DAY, YEAR = 365.25 * DAY;
 
 /* ---------------- storage (degrades to memory) ---------------- */
-const KEY = 'clearance.v1';
+const KEY = 'edondo.v1';
+const SCHEMA = 1;   // bump when a field changes meaning, then migrate in load()
 let storageOK = true;
 try {
   localStorage.setItem('__probe', '1');
@@ -20,8 +29,11 @@ try {
 let memory = null;
 
 const defaults = () => ({
+  schema: SCHEMA,
   quitTs: null,
-  age: null,
+  age: null,         // age now, drives which argument the app makes
+  startAge: null,    // age at first use — under 18 changes the content profile
+  yearsSmoked: null, // how long the habit ran; drives the arc, not age
   why: '',
   logs: [],          // { ts, sharpness, note }
   cravings: [],      // { ts, survived, note }
@@ -31,11 +43,24 @@ const defaults = () => ({
   gateUnlockedFor: null
 });
 
+/* Migrations run oldest-first. Each one takes the stored blob and returns it
+   one version newer. There are no v0 users in the wild, so this is empty —
+   but the hook exists so the next schema change costs a function, not a release. */
+const MIGRATIONS = {
+  // 1: s => ({ ...s, newField: derive(s) }),
+};
+
+function migrate(stored) {
+  let s = stored, from = s.schema ?? 0;
+  while (from < SCHEMA && MIGRATIONS[from]) { s = MIGRATIONS[from](s); from++; }
+  return { ...defaults(), ...s, schema: SCHEMA };
+}
+
 function load() {
   if (!storageOK) return memory ?? (memory = defaults());
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? { ...defaults(), ...JSON.parse(raw) } : defaults();
+    return raw ? migrate(JSON.parse(raw)) : defaults();
   } catch { return defaults(); }
 }
 
@@ -146,14 +171,37 @@ const SKIN = [
 /* Years of life gained by quitting, by age at cessation.
    Jha et al., NEJM 2013 (n=202,248): quitting at 25–34 gained ~10 years,
    35–44 ~9, 45–54 ~6, 55–64 ~4, versus continuing to smoke. */
+/* Jha 2013 studied adults. Its youngest cohort is 25–34, so there is no honest
+   life-expectancy number to quote at anyone below 25 — the old table had no floor
+   and filed a 13-year-old under "25–34", which was simply wrong.
+
+   Under 25 the app makes a different argument entirely (see PROFILES): the payoff
+   that matters at that age is neurological, not actuarial. `years: null` means
+   "no figure exists for this band" and renderLife must not print one. */
 const AGE_BANDS = [
-  { max: 34, years: 10, band: '25–34' },
-  { max: 44, years: 9,  band: '35–44' },
-  { max: 54, years: 6,  band: '45–54' },
-  { max: 64, years: 4,  band: '55–64' },
-  { max: 200, years: 3, band: '65+'   }
+  { min: 0,  max: 17,  years: null, band: 'under 18', profile: 'teen'  },
+  { min: 18, max: 24,  years: null, band: '18–24',    profile: 'young' },
+  { min: 25, max: 34,  years: 10,   band: '25–34',    profile: 'adult' },
+  { min: 35, max: 44,  years: 9,    band: '35–44',    profile: 'adult' },
+  { min: 45, max: 54,  years: 6,    band: '45–54',    profile: 'adult' },
+  { min: 55, max: 64,  years: 4,    band: '55–64',    profile: 'adult' },
+  { min: 65, max: 200, years: 3,    band: '65+',      profile: 'adult' }
 ];
-const ageBand = age => AGE_BANDS.find(b => age <= b.max) || AGE_BANDS[AGE_BANDS.length - 1];
+
+function ageBand(age) {
+  const n = Number(age);
+  if (!isFinite(n) || n <= 0) return null;
+  return AGE_BANDS.find(b => n >= b.min && n <= b.max) || AGE_BANDS[AGE_BANDS.length - 1];
+}
+
+/* Which case the app makes. Age at first use outranks current age: a 26-year-old
+   who started at 14 took the developmental hit, and should be told so. */
+function profileFor(state) {
+  const band = ageBand(state.age);
+  if (band && band.profile === 'teen') return 'teen';
+  if (state.startAge && Number(state.startAge) < 18) return 'earlyStart';
+  return band ? band.profile : 'adult';
+}
 
 const BADGES = [
   { at: 3 * YEAR, name: 'Excess risk largely averted',
@@ -303,19 +351,45 @@ function phaseCopy(t) {
 
 
 /* ---------------- age-driven life expectancy ---------------- */
+const JHA_SRC = 'Jha et al., NEJM 2013 — 21st-Century Hazards of Smoking and Benefits of Cessation';
+const YOUTH_SRC = 'Psychological Medicine, age-dependent association of cannabis use with psychotic disorder; J Dual Diagnosis 2023';
+
 function renderLife() {
   const age = state.age;
   const el = $('#lifeYears'), hd = $('#lifeHeadline'), ex = $('#lifeExplain');
+  const unit = $('#lifeUnit'), src = $('#lifeSrc');
 
   if (!age) {
     el.textContent = '—';
+    unit.textContent = 'years of life expectancy reclaimed';
+    src.textContent = JHA_SRC;
     hd.textContent = 'Add your age to see what quitting bought you.';
-    ex.textContent = 'The size of the gain depends almost entirely on the age you stop. Set it on the You tab.';
+    ex.textContent = 'What you get back depends almost entirely on the age you stop. Set it on the You tab.';
     return;
   }
 
   const b = ageBand(age);
+
+  /* No life-expectancy figure exists below 25 — the cessation cohorts start there.
+     Quoting one anyway would be inventing a number, so we make the argument that
+     actually applies at this age instead. */
+  if (!b.years) {
+    const early = profileFor(state) === 'teen' || (state.startAge && Number(state.startAge) < 18);
+    el.textContent = '2×';
+    unit.textContent = 'the risk you are stepping away from';
+    src.textContent = YOUTH_SRC;
+    hd.textContent = early
+      ? 'You started young. That is exactly why stopping now counts.'
+      : 'You are young enough that this is about your brain, not your lifespan.';
+    ex.textContent = early
+      ? 'Research finds the risk of developing a psychotic disorder roughly doubles when cannabis use starts before ages 16 to 18, and that earlier starts are linked to earlier, more severe symptoms. The brain is still pruning and myelinating through adolescence, and the endocannabinoid system helps run both. The product also changed: cannabis ran 3 to 4 percent THC in earlier decades and runs 15 to 25 percent now. Stopping while that development is still underway is the whole point.'
+      : 'The life-expectancy figures on this screen come from cessation studies of adults 25 and older, so there is no honest number to give you yet. What the research does show at your age is that risk of a psychotic disorder is roughly doubled when use begins before 16 to 18, and that today’s cannabis is several times stronger than what earlier generations used. Stopping now is the version of this decision with the most left to gain.';
+    return;
+  }
+
   el.textContent = '~' + b.years;
+  unit.textContent = 'years of life expectancy reclaimed';
+  src.textContent = JHA_SRC;
 
   if (age < 40) {
     hd.textContent = 'You quit before 40. That is the whole ballgame.';
@@ -329,12 +403,25 @@ function renderLife() {
   }
 }
 
-/* ---------------- ten-year arc ---------------- */
-/* Linear time over ten years puts day 1 at 0.03% — invisible, and demoralising on
-   the exact day it matters most. A log scale keeps early progress legible while
-   still showing how much of the decade is left. */
-const ARC_MAX = Math.log(1 + 3653);
-const arcPct = t => clamp01(Math.log(1 + t / DAY) / ARC_MAX) * 100;
+/* ---------------- the recovery arc ---------------- */
+/* Linear time puts day 1 at 0.03% — invisible, and demoralising on the exact day
+   it matters most. A log scale keeps early progress legible while still showing
+   how much of the span is left.
+
+   The span is how long the habit ran, NOT the user's age. Someone who smoked two
+   years sees a two-year arc. Floored at 2 years because ARC_STOPS carries a stop
+   at the two-year mark, and capped at 10 because the content stops there — the
+   last badge is at ten years. */
+const ARC_MIN_YEARS = 2, ARC_MAX_YEARS = 10;
+
+function arcSpanYears() {
+  const y = state.yearsSmoked;
+  if (!y || !isFinite(y) || y <= 0) return ARC_MAX_YEARS;   // unknown: assume the full span
+  return Math.min(ARC_MAX_YEARS, Math.max(ARC_MIN_YEARS, y));
+}
+
+const arcSpanDays = () => arcSpanYears() * 365.25;
+const arcPct = t => clamp01(Math.log(1 + t / DAY) / Math.log(1 + arcSpanDays())) * 100;
 
 const ARC_STOPS = [
   { at: 2 * WEEK,  short: 'Wk 1–2', full: 'Cilia awakening & tar clearance' },
@@ -344,16 +431,27 @@ const ARC_STOPS = [
 ];
 
 function renderArc() {
-  $('#arcTicks').innerHTML = ARC_STOPS.map(s => {
+  const years = arcSpanYears();
+  const spanMs = arcSpanDays() * DAY;
+  const stops = ARC_STOPS.filter(s => s.at <= spanMs);   // never label past the end of the bar
+
+  const n = years % 1 ? years.toFixed(1) : String(years);
+  const plural = years === 1 ? 'year' : 'years';
+  $('#arcTitle').textContent = `The ${n}-year arc`;
+  $('#arcCaption').textContent = state.yearsSmoked
+    ? `${n} ${plural} of smoking, mapped against ${n} ${plural} of undoing it`
+    : 'Your recovery so far. Add how long you smoked on the You tab to scale this properly.';
+
+  $('#arcTicks').innerHTML = stops.map(s => {
     const done = elapsed() >= s.at;
     return `<span class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-1 h-4 rounded-full ${done ? 'bg-oxygen' : 'bg-faint/50'}"
       style="left:${arcPct(s.at).toFixed(2)}%"></span>`;
   }).join('');
 
-  $('#arcLabels').innerHTML = ARC_STOPS.map((s, i) => {
+  $('#arcLabels').innerHTML = stops.map((s, i) => {
     const done = elapsed() >= s.at;
     const p = arcPct(s.at);
-    const align = i === 0 ? 'translate-x-0 text-left' : i === ARC_STOPS.length - 1 ? '-translate-x-full text-right' : '-translate-x-1/2 text-center';
+    const align = i === 0 ? 'translate-x-0 text-left' : i === stops.length - 1 ? '-translate-x-full text-right' : '-translate-x-1/2 text-center';
     return `<span class="absolute top-0 ${align} w-24" style="left:${p.toFixed(2)}%">
       <span class="block font-mono tnum text-[10px] ${done ? 'text-oxygen' : 'text-faint'}">${s.short}</span>
       <span class="block text-[9px] leading-tight mt-0.5 ${done ? 'text-muted' : 'text-faint/60'}">${s.full}</span>
@@ -526,7 +624,7 @@ function paintPomo() {
   $('#pomoRing').setAttribute('stroke', mode === 'work' ? '#79C8B4' : '#8FB8E8');
   $('#pomoLabel').textContent = mode === 'work' ? 'focus' : 'recover';
   $('#pomoStart').textContent = running ? 'Pause' : 'Start';
-  document.title = running ? `${pad(mm)}:${pad(ss)} — Clearance` : 'Clearance';
+  document.title = running ? `${pad(mm)}:${pad(ss)} — E Don Do` : 'E Don Do';
 }
 
 function setMode(m) {
@@ -639,8 +737,21 @@ $('#whySave').addEventListener('click', () => {
 });
 $('#ageSave').addEventListener('click', () => {
   const v = parseInt($('#ageEdit').value, 10);
-  if (!v || v < 13 || v > 100) { toast('Enter an age between 13 and 100'); return; }
-  state.age = v; save(); renderLife(); toast('Age updated');
+  if (!isFinite(v) || v < 10 || v > 100) { toast('Enter an age between 10 and 100'); return; }
+  if (state.startAge && v < state.startAge) { toast('That is younger than the age you started'); return; }
+  state.age = v; save(); renderLife(); renderMilestones(); toast('Age updated');
+});
+$('#startAgeSave').addEventListener('click', () => {
+  const v = parseInt($('#startAgeEdit').value, 10);
+  if (!isFinite(v) || v < 5 || v > 100) { toast('Enter a starting age between 5 and 100'); return; }
+  if (state.age && v > state.age) { toast('You cannot have started older than you are now'); return; }
+  state.startAge = v; save(); renderLife(); toast('Starting age updated');
+});
+$('#yearsSave').addEventListener('click', () => {
+  const v = parseFloat($('#yearsEdit').value);
+  if (!isFinite(v) || v < 0 || v > 80) { toast('Enter how many years, between 0 and 80'); return; }
+  if (state.age && v > state.age) { toast('That is more years than you have been alive'); return; }
+  state.yearsSmoked = v; save(); renderArc(); tick(); toast('Recovery bar updated');
 });
 $('#quitSave').addEventListener('click', () => {
   const v = $('#quitEdit').value;
@@ -654,7 +765,7 @@ $('#exportBtn').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `clearance-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `edondo-${new Date().toISOString().slice(0, 10)}.json`;
   a.click(); URL.revokeObjectURL(a.href);
 });
 $('#resetBtn').addEventListener('click', () => {
@@ -740,11 +851,44 @@ $('#panicExit').addEventListener('click', () => {
 $('#onboardNow').addEventListener('click', () => {
   $('#onboardTime').value = toLocalInput(Date.now());
 });
+/* Validation the first version did not have: a future quit time was silently
+   snapped to now, and any age at all was accepted. Both now say what is wrong
+   and how to fix it, rather than quietly doing something else. */
+function onboardError(msg) {
+  const el = $('#onboardError');
+  if (!msg) { el.hidden = true; return false; }
+  el.textContent = msg;
+  el.hidden = false;
+  return true;
+}
+
 $('#onboardStart').addEventListener('click', () => {
   const v = $('#onboardTime').value;
   const ts = v ? new Date(v).getTime() : Date.now();
+  const age = parseInt($('#onboardAge').value, 10);
+  const startAge = parseInt($('#onboardStartAge').value, 10);
+  const years = parseFloat($('#onboardYears').value);
+
+  if (v && !isFinite(ts))
+    return onboardError('That date did not read properly. Pick it again, or tap "Just now".');
+  if (ts > Date.now() + MIN)
+    return onboardError('That time is in the future. Pick when you actually last smoked.');
+  if ($('#onboardAge').value && (!isFinite(age) || age < 10 || age > 100))
+    return onboardError('Enter an age between 10 and 100.');
+  if ($('#onboardStartAge').value && (!isFinite(startAge) || startAge < 5 || startAge > 100))
+    return onboardError('Enter a starting age between 5 and 100.');
+  if (isFinite(age) && isFinite(startAge) && startAge > age)
+    return onboardError('You cannot have started at an age older than you are now.');
+  if ($('#onboardYears').value && (!isFinite(years) || years < 0 || years > 80))
+    return onboardError('Enter how many years, between 0 and 80.');
+  if (isFinite(age) && isFinite(years) && years > age)
+    return onboardError('That is more years of smoking than you have been alive.');
+
+  onboardError(null);
   state.quitTs = Math.min(ts, Date.now());
-  state.age = parseInt($('#onboardAge').value, 10) || null;
+  state.age = isFinite(age) ? age : null;
+  state.startAge = isFinite(startAge) ? startAge : null;
+  state.yearsSmoked = isFinite(years) ? years : null;
   state.why = $('#onboardWhy').value.trim();
   save();
   boot();
@@ -761,9 +905,11 @@ function boot() {
   }
   $('#onboard').hidden = true;
   $('#shell').hidden = false;
-  $('#whyEdit').value = state.why || '';
-  $('#ageEdit').value  = state.age || '';
-  $('#quitEdit').value = toLocalInput(state.quitTs);
+  $('#whyEdit').value      = state.why || '';
+  $('#ageEdit').value      = state.age || '';
+  $('#startAgeEdit').value = state.startAge || '';
+  $('#yearsEdit').value    = state.yearsSmoked ?? '';
+  $('#quitEdit').value     = toLocalInput(state.quitTs);
   $('#storageWarn').hidden = storageOK;
 
   goto('home');
