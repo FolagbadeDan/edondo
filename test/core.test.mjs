@@ -78,7 +78,8 @@ function loadApp({ storage = new Map() } = {}) {
     KEY, SCHEMA, state,
     AGE_BANDS, MILESTONES, BADGES, ARC_STOPS,
     arcPct, arcSpanYears, arcSpanDays,
-    ARC_MIN_YEARS, ARC_MAX_YEARS
+    ARC_MIN_YEARS, ARC_MAX_YEARS,
+    ONBOARD_LAST
   })`, sandbox);
 
   return { ...collected, ageBand: sandbox.ageBand, profileFor: sandbox.profileFor,
@@ -277,4 +278,47 @@ test('corrupt stored state falls back to defaults instead of throwing', () => {
 test('the storage key is the renamed one', () => {
   const app = loadApp();
   assert.equal(app.KEY, 'edondo.v1');
+});
+
+/* ---------------- markup guards ----------------
+   These are string checks against index.html rather than real layout tests, but
+   they pin two mistakes that already happened once: onboarding grew taller than
+   a phone screen with no way to scroll to the submit button, and form fields
+   were left under 16px, which makes iOS zoom in on focus and never zoom back. */
+
+const indexHtml = readFileSync(join(here, '..', 'index.html'), 'utf8');
+
+test('the onboarding overlay can always be scrolled', () => {
+  const overlay = indexHtml.match(/<div id="onboard"[^>]*>/)[0];
+  assert.match(overlay, /overflow-y-auto/,
+    'onboarding is fixed-position; without overflow-y-auto, content taller than the screen is unreachable');
+});
+
+test('onboarding markup has one section per step', () => {
+  const app = loadApp();
+  const steps = [...indexHtml.matchAll(/data-ostep="(\d+)"/g)].map(m => Number(m[1]));
+  assert.equal(steps.length, app.ONBOARD_LAST,
+    `ONBOARD_LAST is ${app.ONBOARD_LAST} but markup has ${steps.length} steps`);
+  assert.deepEqual(steps, Array.from({ length: app.ONBOARD_LAST }, (_, i) => i + 1),
+    'step numbers must run 1..n with no gaps');
+});
+
+test('every onboarding step is reachable from the step before it', () => {
+  const app = loadApp();
+  // the only forward control is #onboardNext, and back is #onboardBack
+  assert.match(indexHtml, /id="onboardNext"/);
+  assert.match(indexHtml, /id="onboardBack"/);
+  assert.ok(app.ONBOARD_LAST >= 2, 'a stepped flow needs at least two steps');
+});
+
+test('form fields are kept at 16px so iOS does not zoom on focus', () => {
+  assert.match(indexHtml, /input\[class\][^{]*\{[^}]*font-size:\s*16px/,
+    'the 16px rule must beat Tailwind\'s .text-sm on specificity, or it silently does nothing');
+});
+
+test('the quit-time chips cover the common answers', () => {
+  const chips = [...indexHtml.matchAll(/data-quit="([^"]+)"/g)].map(m => m[1]);
+  assert.ok(chips.includes('0'), 'needs a "just now" option');
+  assert.ok(chips.includes('pick'), 'needs an exact-time escape hatch');
+  assert.ok(chips.length >= 3, 'one tap should cover most people');
 });

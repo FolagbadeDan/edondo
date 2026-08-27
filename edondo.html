@@ -95,6 +95,30 @@ tailwind.config = {
 
   input, textarea, select { color-scheme: dark; }
   textarea { resize: none; }
+
+  /* ── mobile ───────────────────────────────────────────────────────────────
+     iOS Safari zooms the whole page when you focus a field whose font is under
+     16px, and never zooms back out. Every field is 16px for that reason alone;
+     do not shrink them to fit a layout.
+
+     The [class] attribute selector is deliberate: a bare `input` selector loses
+     on specificity to Tailwind's own `.text-sm`, so the rule silently did
+     nothing. Matching the attribute makes it a class-level selector that wins,
+     and it guards any field added later without anyone remembering this. */
+  input[class], textarea[class], select[class],
+  input, textarea, select { font-size: 16px; }
+
+  /* Comfortable touch targets. 44px is the floor most accessibility guidance
+     agrees on, and it matters more here than usual: people reach for this app
+     one-handed, at night, while craving. */
+  .tap, button, [role="button"] { min-height: 44px; }
+  .seg, [data-sharp] { min-height: 44px; }
+  /* icon-only buttons need the box even though the glyph is small */
+  .tap-icon { min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
+
+  /* The bottom nav is fixed, so the last card in a tab would otherwise sit
+     underneath it. */
+  .tabpane { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-thumb { background: #222E3D; border-radius: 99px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -119,39 +143,84 @@ tailwind.config = {
 <body class="field bg-ink text-body font-sans antialiased">
 
 <!-- ══════════════ ONBOARDING ══════════════ -->
-<div id="onboard" class="fixed inset-0 z-[80] bg-ink flex items-center justify-center p-6" hidden>
-  <div class="w-full max-w-md rise">
-    <p class="eyebrow text-dawn mb-3">E Don Do</p>
-    <h1 class="font-display text-4xl font-extrabold leading-[1.05] tracking-tight mb-3">Today is the day it stops being normal.</h1>
-    <p class="text-muted text-sm leading-relaxed mb-8">Everything stays on this phone. Nothing is sent anywhere, nothing is shared, and you do not need an account.</p>
+<!-- One question per screen. Four short steps beat one tall form: the tall version
+     overflowed a phone viewport and the submit button sat below the fold with no
+     way to scroll to it. The outer div scrolls regardless, as a safety net for
+     short screens and landscape. -->
+<div id="onboard" class="fixed inset-0 z-[80] bg-ink overflow-y-auto overscroll-contain" hidden>
+  <div class="min-h-full flex flex-col p-6 safe-t safe-b">
 
-    <label class="block mb-2 eyebrow text-faint">When did you last smoke?</label>
-    <div class="flex gap-2 mb-6">
-      <input id="onboardTime" type="datetime-local" class="flex-1 bg-raised border border-line rounded-xl px-3 py-3 text-sm font-mono tnum" />
-      <button id="onboardNow" class="tap px-4 rounded-xl border border-line text-sm text-dawn hover:bg-raised transition">Just now</button>
+    <div class="w-full max-w-md mx-auto flex items-center justify-between py-2">
+      <p class="eyebrow text-dawn">E Don Do</p>
+      <div id="onboardDots" class="flex gap-1.5" aria-hidden="true"></div>
     </div>
 
-    <label class="block mb-2 eyebrow text-faint">How old are you?</label>
-    <input id="onboardAge" type="number" min="10" max="100" inputmode="numeric" placeholder="32"
-      class="w-full bg-raised border border-line rounded-xl px-4 py-3 text-sm font-mono tnum placeholder:text-faint mb-2" />
-    <p class="text-[11px] text-faint mb-6 leading-relaxed">This decides which facts the app shows you. What matters at 16 is not what matters at 40.</p>
+    <div class="w-full max-w-md mx-auto flex-1 flex flex-col justify-center py-8">
 
-    <label class="block mb-2 eyebrow text-faint">How old were you when you started?</label>
-    <input id="onboardStartAge" type="number" min="5" max="100" inputmode="numeric" placeholder="19"
-      class="w-full bg-raised border border-line rounded-xl px-4 py-3 text-sm font-mono tnum placeholder:text-faint mb-6" />
+      <!-- ── step 1 ── -->
+      <section data-ostep="1" class="rise">
+        <h1 class="font-display text-[2rem] leading-[1.08] font-extrabold tracking-tight mb-3">Today is the day it stops being normal.</h1>
+        <p class="text-muted text-sm leading-relaxed mb-7">Everything stays on this phone. Nothing is sent anywhere, nothing is shared, and you do not need an account.</p>
 
-    <label class="block mb-2 eyebrow text-faint">How many years were you smoking?</label>
-    <input id="onboardYears" type="number" min="0" max="80" step="0.5" inputmode="decimal" placeholder="10"
-      class="w-full bg-raised border border-line rounded-xl px-4 py-3 text-sm font-mono tnum placeholder:text-faint mb-2" />
-    <p class="text-[11px] text-faint mb-6 leading-relaxed">A rough number is fine. This sets the length of your recovery bar.</p>
+        <label class="block mb-3 eyebrow text-faint">When did you last smoke?</label>
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <button type="button" data-quit="0"  class="ochip tap rounded-xl border border-line py-3.5 text-[15px] text-body hover:bg-raised transition">Just now</button>
+          <button type="button" data-quit="4"  class="ochip tap rounded-xl border border-line py-3.5 text-[15px] text-body hover:bg-raised transition">A few hours ago</button>
+          <button type="button" data-quit="24" class="ochip tap rounded-xl border border-line py-3.5 text-[15px] text-body hover:bg-raised transition">Yesterday</button>
+          <button type="button" data-quit="pick" class="ochip tap rounded-xl border border-line py-3.5 text-[15px] text-body hover:bg-raised transition">Pick the time</button>
+        </div>
+        <input id="onboardTime" type="datetime-local" hidden
+          class="w-full bg-raised border border-line rounded-xl px-3 py-3.5 text-base font-mono tnum mb-2" />
+      </section>
 
-    <label class="block mb-2 eyebrow text-faint">Why are you stopping?</label>
-    <textarea id="onboardWhy" rows="4" placeholder="Say it the way you would say it out loud. You will read this back on a hard night." class="w-full bg-raised border border-line rounded-xl px-4 py-3 text-sm leading-relaxed placeholder:text-faint mb-2"></textarea>
-    <p class="text-[11px] text-faint mb-6 leading-relaxed">You can skip this and add it later on the You tab.</p>
+      <!-- ── step 2 ── -->
+      <section data-ostep="2" hidden>
+        <h1 class="font-display text-[2rem] leading-[1.08] font-extrabold tracking-tight mb-3">How old are you?</h1>
+        <p class="text-muted text-sm leading-relaxed mb-7">This decides which facts the app shows you. What matters at 16 is not what matters at 40.</p>
 
-    <p id="onboardError" class="text-[12px] text-alarm mb-3 leading-relaxed" hidden></p>
-    <button id="onboardStart" class="tap w-full bg-dawn text-ink font-semibold rounded-xl py-4 hover:brightness-110 active:scale-[.99] transition">Start the clock</button>
-    <p class="text-[11px] text-faint mt-4 leading-relaxed text-center">E Don Do gives you information and tools. It is not medical advice and does not replace a doctor or a counsellor.</p>
+        <label class="block mb-2 eyebrow text-faint">Your age now</label>
+        <input id="onboardAge" type="number" min="10" max="100" inputmode="numeric" placeholder="32"
+          class="w-full bg-raised border border-line rounded-xl px-4 py-3.5 text-base font-mono tnum placeholder:text-faint mb-6" />
+
+        <label class="block mb-2 eyebrow text-faint">How old were you when you started?</label>
+        <input id="onboardStartAge" type="number" min="5" max="100" inputmode="numeric" placeholder="19"
+          class="w-full bg-raised border border-line rounded-xl px-4 py-3.5 text-base font-mono tnum placeholder:text-faint mb-2" />
+        <p class="text-[12px] text-faint leading-relaxed">Starting before 18 changes what the research says, so the app will tell you something different.</p>
+      </section>
+
+      <!-- ── step 3 ── -->
+      <section data-ostep="3" hidden>
+        <h1 class="font-display text-[2rem] leading-[1.08] font-extrabold tracking-tight mb-3">How long were you smoking?</h1>
+        <p class="text-muted text-sm leading-relaxed mb-7">A rough number is fine. This sets the length of your recovery bar, so it matches your own history instead of someone else's.</p>
+
+        <label class="block mb-2 eyebrow text-faint">Years</label>
+        <input id="onboardYears" type="number" min="0" max="80" step="0.5" inputmode="decimal" placeholder="10"
+          class="w-full bg-raised border border-line rounded-xl px-4 py-3.5 text-base font-mono tnum placeholder:text-faint" />
+      </section>
+
+      <!-- ── step 4 ── -->
+      <section data-ostep="4" hidden>
+        <h1 class="font-display text-[2rem] leading-[1.08] font-extrabold tracking-tight mb-3">Why are you stopping?</h1>
+        <p class="text-muted text-sm leading-relaxed mb-7">You will read this back on a hard night, when you need a reason that came from you and not from an app.</p>
+
+        <textarea id="onboardWhy" rows="4" placeholder="Say it the way you would say it out loud."
+          class="w-full bg-raised border border-line rounded-xl px-4 py-3.5 text-base leading-relaxed placeholder:text-faint mb-2"></textarea>
+        <p class="text-[12px] text-faint leading-relaxed">You can skip this and add it later on the You tab.</p>
+      </section>
+
+    </div>
+
+    <div class="w-full max-w-md mx-auto pt-2">
+      <p id="onboardError" class="text-[13px] text-alarm mb-3 leading-relaxed" hidden></p>
+      <div class="flex gap-2">
+        <button id="onboardBack" type="button" hidden
+          class="tap px-5 rounded-xl border border-line text-[15px] text-muted hover:text-body hover:bg-raised transition">Back</button>
+        <button id="onboardNext" type="button"
+          class="tap flex-1 bg-dawn text-ink font-semibold rounded-xl py-4 text-[15px] hover:brightness-110 active:scale-[.99] transition">Continue</button>
+      </div>
+      <p class="text-[11px] text-faint mt-4 leading-relaxed text-center">E Don Do gives you information and tools. It is not medical advice and does not replace a doctor or a counsellor.</p>
+    </div>
+
   </div>
 </div>
 
@@ -173,7 +242,7 @@ tailwind.config = {
           <div id="stripDay" class="font-mono tnum text-[15px] font-medium">Day 1</div>
           <div id="stripClock" class="font-mono tnum text-[10px] text-faint mt-0.5">00:00:00</div>
         </div>
-        <button data-goto="you" class="tap text-muted hover:text-body transition" aria-label="Your settings">
+        <button data-goto="you" class="tap tap-icon text-muted hover:text-body transition" aria-label="Your settings">
           <i data-lucide="settings-2" class="w-[18px] h-[18px]"></i>
         </button>
       </div>
@@ -183,7 +252,7 @@ tailwind.config = {
   <main class="flex-1 max-w-5xl w-full mx-auto px-5 pt-6 pb-44">
 
     <!-- ══════════ HOME ══════════ -->
-    <section id="tab-home" data-tab class="space-y-4">
+    <section id="tab-home" data-tab class="space-y-4 tabpane">
 
       <!-- SIGNATURE: breathing recovery dial -->
       <div class="relative card rounded-xl2 px-6 pt-8 pb-7 overflow-hidden">
@@ -260,7 +329,7 @@ tailwind.config = {
     </section>
 
     <!-- ══════════ FLOW ══════════ -->
-    <section id="tab-flow" data-tab class="space-y-4" hidden>
+    <section id="tab-flow" data-tab class="space-y-4 tabpane" hidden>
       <div class="px-1 pb-1">
         <p class="eyebrow text-dawn mb-2">The natural high engine</p>
         <h1 class="font-display text-3xl font-extrabold tracking-tight leading-tight">Natural Flow</h1>
@@ -331,7 +400,7 @@ tailwind.config = {
     </section>
 
     <!-- ══════════ BODY ══════════ -->
-    <section id="tab-body" data-tab class="space-y-4" hidden>
+    <section id="tab-body" data-tab class="space-y-4 tabpane" hidden>
       <div class="px-1 pb-1">
         <p class="eyebrow text-oxygen mb-2">Dermal &amp; cellular oxygenation timeline</p>
         <h1 class="font-display text-3xl font-extrabold tracking-tight leading-tight">Skin vibrancy &amp; cellular recovery</h1>
@@ -349,7 +418,7 @@ tailwind.config = {
     </section>
 
     <!-- ══════════ LIFE ══════════ -->
-    <section id="tab-life" data-tab class="space-y-4" hidden>
+    <section id="tab-life" data-tab class="space-y-4 tabpane" hidden>
       <div class="px-1 pb-1">
         <p class="eyebrow text-dawn mb-2">Life expectancy &amp; longevity reclaimed</p>
         <h1 id="lifeHeadline" class="font-display text-3xl font-extrabold tracking-tight leading-tight">—</h1>
@@ -384,7 +453,7 @@ tailwind.config = {
     </section>
 
     <!-- ══════════ YOU ══════════ -->
-    <section id="tab-you" data-tab class="space-y-4" hidden>
+    <section id="tab-you" data-tab class="space-y-4 tabpane" hidden>
       <div class="px-1 pb-1">
         <p class="eyebrow text-dawn mb-2">Your file</p>
         <h1 class="font-display text-3xl font-extrabold tracking-tight leading-tight">Why you quit at 32</h1>
@@ -1394,12 +1463,14 @@ $('#panicExit').addEventListener('click', () => {
 });
 
 /* ---------------- onboarding ---------------- */
-$('#onboardNow').addEventListener('click', () => {
-  $('#onboardTime').value = toLocalInput(Date.now());
-});
-/* Validation the first version did not have: a future quit time was silently
-   snapped to now, and any age at all was accepted. Both now say what is wrong
-   and how to fix it, rather than quietly doing something else. */
+/* One question per screen. The single tall form overflowed a phone viewport and
+   put the submit button below an unscrollable fold, so this walks four short
+   steps instead. Validation runs per step, which means an error appears next to
+   the question that caused it rather than at the end of a long form. */
+const ONBOARD_LAST = 4;
+let onboardStep = 1;
+let onboardQuitTs = null;   // chosen by chip or picker; null until the user says
+
 function onboardError(msg) {
   const el = $('#onboardError');
   if (!msg) { el.hidden = true; return false; }
@@ -1408,36 +1479,108 @@ function onboardError(msg) {
   return true;
 }
 
-$('#onboardStart').addEventListener('click', () => {
-  const v = $('#onboardTime').value;
-  const ts = v ? new Date(v).getTime() : Date.now();
+function renderOnboard() {
+  $('[data-ostep]').forEach(s => { s.hidden = Number(s.dataset.ostep) !== onboardStep; });
+
+  $('#onboardDots').innerHTML = Array.from({ length: ONBOARD_LAST }, (_, i) =>
+    `<span class="block w-1.5 h-1.5 rounded-full ${i + 1 === onboardStep ? 'bg-dawn' : i + 1 < onboardStep ? 'bg-dawn/40' : 'bg-line'}"></span>`
+  ).join('');
+
+  $('#onboardBack').hidden = onboardStep === 1;
+  $('#onboardNext').textContent =
+    onboardStep === ONBOARD_LAST ? 'Start the clock'
+    : onboardStep === 4 - 1      ? 'Continue'
+    : 'Continue';
+
+  // the "why" step is genuinely optional, so say so on the button itself
+  if (onboardStep === ONBOARD_LAST && !$('#onboardWhy').value.trim())
+    $('#onboardNext').textContent = 'Skip and start the clock';
+
+  onboardError(null);
+  $('#onboard').scrollTop = 0;
+}
+
+/* Returns an error string, or null when the step is good to leave. */
+function validateOnboardStep(step) {
+  if (step === 1) {
+    if (onboardQuitTs === null) return 'Pick when you last smoked. Tap one of the four options.';
+    if (!isFinite(onboardQuitTs)) return 'That time did not read properly. Pick it again.';
+    if (onboardQuitTs > Date.now() + MIN) return 'That time is in the future. Pick when you actually last smoked.';
+  }
+  if (step === 2) {
+    const age = parseInt($('#onboardAge').value, 10);
+    const startAge = parseInt($('#onboardStartAge').value, 10);
+    if ($('#onboardAge').value && (!isFinite(age) || age < 10 || age > 100))
+      return 'Enter an age between 10 and 100.';
+    if ($('#onboardStartAge').value && (!isFinite(startAge) || startAge < 5 || startAge > 100))
+      return 'Enter a starting age between 5 and 100.';
+    if (isFinite(age) && isFinite(startAge) && startAge > age)
+      return 'You cannot have started at an age older than you are now.';
+  }
+  if (step === 3) {
+    const years = parseFloat($('#onboardYears').value);
+    const age = parseInt($('#onboardAge').value, 10);
+    if ($('#onboardYears').value && (!isFinite(years) || years < 0 || years > 80))
+      return 'Enter how many years, between 0 and 80.';
+    if (isFinite(age) && isFinite(years) && years > age)
+      return 'That is more years of smoking than you have been alive.';
+  }
+  return null;
+}
+
+function commitOnboard() {
   const age = parseInt($('#onboardAge').value, 10);
   const startAge = parseInt($('#onboardStartAge').value, 10);
   const years = parseFloat($('#onboardYears').value);
 
-  if (v && !isFinite(ts))
-    return onboardError('That date did not read properly. Pick it again, or tap "Just now".');
-  if (ts > Date.now() + MIN)
-    return onboardError('That time is in the future. Pick when you actually last smoked.');
-  if ($('#onboardAge').value && (!isFinite(age) || age < 10 || age > 100))
-    return onboardError('Enter an age between 10 and 100.');
-  if ($('#onboardStartAge').value && (!isFinite(startAge) || startAge < 5 || startAge > 100))
-    return onboardError('Enter a starting age between 5 and 100.');
-  if (isFinite(age) && isFinite(startAge) && startAge > age)
-    return onboardError('You cannot have started at an age older than you are now.');
-  if ($('#onboardYears').value && (!isFinite(years) || years < 0 || years > 80))
-    return onboardError('Enter how many years, between 0 and 80.');
-  if (isFinite(age) && isFinite(years) && years > age)
-    return onboardError('That is more years of smoking than you have been alive.');
-
-  onboardError(null);
-  state.quitTs = Math.min(ts, Date.now());
+  state.quitTs = Math.min(onboardQuitTs ?? Date.now(), Date.now());
   state.age = isFinite(age) ? age : null;
   state.startAge = isFinite(startAge) ? startAge : null;
   state.yearsSmoked = isFinite(years) ? years : null;
   state.why = $('#onboardWhy').value.trim();
   save();
   boot();
+}
+
+/* Four taps cover almost everyone; the picker is there for the rest. */
+$('[data-quit]').forEach(btn => btn.addEventListener('click', () => {
+  const v = btn.dataset.quit;
+  $('[data-quit]').forEach(b => b.classList.remove('border-dawn', 'text-dawn'));
+
+  if (v === 'pick') {
+    const picker = $('#onboardTime');
+    picker.hidden = false;
+    if (!picker.value) picker.value = toLocalInput(Date.now());
+    onboardQuitTs = new Date(picker.value).getTime();
+    btn.classList.add('border-dawn', 'text-dawn');
+    picker.focus();
+  } else {
+    $('#onboardTime').hidden = true;
+    onboardQuitTs = Date.now() - Number(v) * HOUR;
+    btn.classList.add('border-dawn', 'text-dawn');
+  }
+  onboardError(null);
+}));
+
+$('#onboardTime').addEventListener('change', e => {
+  onboardQuitTs = e.target.value ? new Date(e.target.value).getTime() : null;
+  onboardError(null);
+});
+
+$('#onboardWhy').addEventListener('input', () => {
+  if (onboardStep === ONBOARD_LAST)
+    $('#onboardNext').textContent = $('#onboardWhy').value.trim() ? 'Start the clock' : 'Skip and start the clock';
+});
+
+$('#onboardBack').addEventListener('click', () => {
+  if (onboardStep > 1) { onboardStep--; renderOnboard(); }
+});
+
+$('#onboardNext').addEventListener('click', () => {
+  const err = validateOnboardStep(onboardStep);
+  if (err) return onboardError(err);
+  if (onboardStep < ONBOARD_LAST) { onboardStep++; renderOnboard(); return; }
+  commitOnboard();
 });
 
 /* ---------------- boot ---------------- */
@@ -1445,7 +1588,8 @@ function boot() {
   if (!state.quitTs) {
     $('#onboard').hidden = false;
     $('#shell').hidden = true;
-    $('#onboardTime').value = toLocalInput(Date.now());
+    onboardStep = 1;
+    renderOnboard();
     icons();
     return;
   }

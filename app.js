@@ -848,12 +848,14 @@ $('#panicExit').addEventListener('click', () => {
 });
 
 /* ---------------- onboarding ---------------- */
-$('#onboardNow').addEventListener('click', () => {
-  $('#onboardTime').value = toLocalInput(Date.now());
-});
-/* Validation the first version did not have: a future quit time was silently
-   snapped to now, and any age at all was accepted. Both now say what is wrong
-   and how to fix it, rather than quietly doing something else. */
+/* One question per screen. The single tall form overflowed a phone viewport and
+   put the submit button below an unscrollable fold, so this walks four short
+   steps instead. Validation runs per step, which means an error appears next to
+   the question that caused it rather than at the end of a long form. */
+const ONBOARD_LAST = 4;
+let onboardStep = 1;
+let onboardQuitTs = null;   // chosen by chip or picker; null until the user says
+
 function onboardError(msg) {
   const el = $('#onboardError');
   if (!msg) { el.hidden = true; return false; }
@@ -862,36 +864,108 @@ function onboardError(msg) {
   return true;
 }
 
-$('#onboardStart').addEventListener('click', () => {
-  const v = $('#onboardTime').value;
-  const ts = v ? new Date(v).getTime() : Date.now();
+function renderOnboard() {
+  $$('[data-ostep]').forEach(s => { s.hidden = Number(s.dataset.ostep) !== onboardStep; });
+
+  $('#onboardDots').innerHTML = Array.from({ length: ONBOARD_LAST }, (_, i) =>
+    `<span class="block w-1.5 h-1.5 rounded-full ${i + 1 === onboardStep ? 'bg-dawn' : i + 1 < onboardStep ? 'bg-dawn/40' : 'bg-line'}"></span>`
+  ).join('');
+
+  $('#onboardBack').hidden = onboardStep === 1;
+  $('#onboardNext').textContent =
+    onboardStep === ONBOARD_LAST ? 'Start the clock'
+    : onboardStep === 4 - 1      ? 'Continue'
+    : 'Continue';
+
+  // the "why" step is genuinely optional, so say so on the button itself
+  if (onboardStep === ONBOARD_LAST && !$('#onboardWhy').value.trim())
+    $('#onboardNext').textContent = 'Skip and start the clock';
+
+  onboardError(null);
+  $('#onboard').scrollTop = 0;
+}
+
+/* Returns an error string, or null when the step is good to leave. */
+function validateOnboardStep(step) {
+  if (step === 1) {
+    if (onboardQuitTs === null) return 'Pick when you last smoked. Tap one of the four options.';
+    if (!isFinite(onboardQuitTs)) return 'That time did not read properly. Pick it again.';
+    if (onboardQuitTs > Date.now() + MIN) return 'That time is in the future. Pick when you actually last smoked.';
+  }
+  if (step === 2) {
+    const age = parseInt($('#onboardAge').value, 10);
+    const startAge = parseInt($('#onboardStartAge').value, 10);
+    if ($('#onboardAge').value && (!isFinite(age) || age < 10 || age > 100))
+      return 'Enter an age between 10 and 100.';
+    if ($('#onboardStartAge').value && (!isFinite(startAge) || startAge < 5 || startAge > 100))
+      return 'Enter a starting age between 5 and 100.';
+    if (isFinite(age) && isFinite(startAge) && startAge > age)
+      return 'You cannot have started at an age older than you are now.';
+  }
+  if (step === 3) {
+    const years = parseFloat($('#onboardYears').value);
+    const age = parseInt($('#onboardAge').value, 10);
+    if ($('#onboardYears').value && (!isFinite(years) || years < 0 || years > 80))
+      return 'Enter how many years, between 0 and 80.';
+    if (isFinite(age) && isFinite(years) && years > age)
+      return 'That is more years of smoking than you have been alive.';
+  }
+  return null;
+}
+
+function commitOnboard() {
   const age = parseInt($('#onboardAge').value, 10);
   const startAge = parseInt($('#onboardStartAge').value, 10);
   const years = parseFloat($('#onboardYears').value);
 
-  if (v && !isFinite(ts))
-    return onboardError('That date did not read properly. Pick it again, or tap "Just now".');
-  if (ts > Date.now() + MIN)
-    return onboardError('That time is in the future. Pick when you actually last smoked.');
-  if ($('#onboardAge').value && (!isFinite(age) || age < 10 || age > 100))
-    return onboardError('Enter an age between 10 and 100.');
-  if ($('#onboardStartAge').value && (!isFinite(startAge) || startAge < 5 || startAge > 100))
-    return onboardError('Enter a starting age between 5 and 100.');
-  if (isFinite(age) && isFinite(startAge) && startAge > age)
-    return onboardError('You cannot have started at an age older than you are now.');
-  if ($('#onboardYears').value && (!isFinite(years) || years < 0 || years > 80))
-    return onboardError('Enter how many years, between 0 and 80.');
-  if (isFinite(age) && isFinite(years) && years > age)
-    return onboardError('That is more years of smoking than you have been alive.');
-
-  onboardError(null);
-  state.quitTs = Math.min(ts, Date.now());
+  state.quitTs = Math.min(onboardQuitTs ?? Date.now(), Date.now());
   state.age = isFinite(age) ? age : null;
   state.startAge = isFinite(startAge) ? startAge : null;
   state.yearsSmoked = isFinite(years) ? years : null;
   state.why = $('#onboardWhy').value.trim();
   save();
   boot();
+}
+
+/* Four taps cover almost everyone; the picker is there for the rest. */
+$$('[data-quit]').forEach(btn => btn.addEventListener('click', () => {
+  const v = btn.dataset.quit;
+  $$('[data-quit]').forEach(b => b.classList.remove('border-dawn', 'text-dawn'));
+
+  if (v === 'pick') {
+    const picker = $('#onboardTime');
+    picker.hidden = false;
+    if (!picker.value) picker.value = toLocalInput(Date.now());
+    onboardQuitTs = new Date(picker.value).getTime();
+    btn.classList.add('border-dawn', 'text-dawn');
+    picker.focus();
+  } else {
+    $('#onboardTime').hidden = true;
+    onboardQuitTs = Date.now() - Number(v) * HOUR;
+    btn.classList.add('border-dawn', 'text-dawn');
+  }
+  onboardError(null);
+}));
+
+$('#onboardTime').addEventListener('change', e => {
+  onboardQuitTs = e.target.value ? new Date(e.target.value).getTime() : null;
+  onboardError(null);
+});
+
+$('#onboardWhy').addEventListener('input', () => {
+  if (onboardStep === ONBOARD_LAST)
+    $('#onboardNext').textContent = $('#onboardWhy').value.trim() ? 'Start the clock' : 'Skip and start the clock';
+});
+
+$('#onboardBack').addEventListener('click', () => {
+  if (onboardStep > 1) { onboardStep--; renderOnboard(); }
+});
+
+$('#onboardNext').addEventListener('click', () => {
+  const err = validateOnboardStep(onboardStep);
+  if (err) return onboardError(err);
+  if (onboardStep < ONBOARD_LAST) { onboardStep++; renderOnboard(); return; }
+  commitOnboard();
 });
 
 /* ---------------- boot ---------------- */
@@ -899,7 +973,8 @@ function boot() {
   if (!state.quitTs) {
     $('#onboard').hidden = false;
     $('#shell').hidden = true;
-    $('#onboardTime').value = toLocalInput(Date.now());
+    onboardStep = 1;
+    renderOnboard();
     icons();
     return;
   }
