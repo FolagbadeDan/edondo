@@ -40,7 +40,8 @@ const defaults = () => ({
   dopamine: [],      // { ts, activity }
   sessions: 0,
   focusMinutes: 0,
-  gateUnlockedFor: null
+  gateUnlockedFor: null,
+  montageSeen: false
 });
 
 /* Migrations run oldest-first. Each one takes the stored blob and returns it
@@ -244,6 +245,179 @@ const DOPAMINE_MENU = [
   { name: '60-second wall sit', meta: '3 rounds · legs shaking is the point', icon: 'flame' },
   { name: 'Stair sprints', meta: '5 min · up fast, down slow', icon: 'trending-up' }
 ];
+
+/* ---------------- the montage ----------------
+   Six beats explaining how a generation ended up here. Visual first: each card
+   leads with a picture of the point, then two short sentences, then its source.
+
+   Tone rules that matter more here than anywhere else in the app: never blame
+   the music, never moralise, and land on beat six. The point of the whole
+   sequence is to move someone from "I am weak" to "I was set up", because the
+   second one is a thing you can act on. */
+
+const MONTAGE_ART = {
+  decade: `<svg viewBox="0 0 240 90" class="w-full h-[90px]" aria-hidden="true">
+    ${Array.from({ length: 24 }, (_, i) => {
+      const h = [14,26,40,22,54,36,62,44,70,52,78,58,72,64,80,60,74,50,66,42,58,34,46,28][i];
+      return `<rect x="${i * 10 + 2}" y="${85 - h}" width="5" height="${h}" rx="2.5"
+        fill="${i > 15 ? '#8FB8E8' : '#2C3B4E'}" opacity="${i > 15 ? 1 : .8}"/>`;
+    }).join('')}
+  </svg>`,
+
+  wallpaper: `<svg viewBox="0 0 240 90" class="w-full h-[90px]" aria-hidden="true">
+    ${Array.from({ length: 5 }, (_, r) => Array.from({ length: 12 }, (_, c) =>
+      `<circle cx="${c * 20 + 12}" cy="${r * 18 + 12}" r="3.5" fill="#8FB8E8" opacity="${(0.5 - r * 0.09).toFixed(2)}"/>`
+    ).join('')).join('')}
+  </svg>`,
+
+  circle: `<svg viewBox="0 0 240 90" class="w-full h-[90px]" aria-hidden="true">
+    <line x1="120" y1="45" x2="60"  y2="22" stroke="#2C3B4E" stroke-width="1.5"/>
+    <line x1="120" y1="45" x2="180" y2="22" stroke="#2C3B4E" stroke-width="1.5"/>
+    <line x1="120" y1="45" x2="52"  y2="68" stroke="#2C3B4E" stroke-width="1.5"/>
+    <line x1="120" y1="45" x2="188" y2="68" stroke="#2C3B4E" stroke-width="1.5"/>
+    <line x1="60"  y1="22" x2="180" y2="22" stroke="#2C3B4E" stroke-width="1.5"/>
+    <line x1="52"  y1="68" x2="188" y2="68" stroke="#2C3B4E" stroke-width="1.5"/>
+    <circle cx="60"  cy="22" r="7" fill="#2C3B4E"/>
+    <circle cx="180" cy="22" r="7" fill="#2C3B4E"/>
+    <circle cx="52"  cy="68" r="7" fill="#2C3B4E"/>
+    <circle cx="188" cy="68" r="7" fill="#2C3B4E"/>
+    <circle cx="120" cy="45" r="10" fill="#8FB8E8"/>
+  </svg>`,
+
+  potency: `<svg viewBox="0 0 240 90" class="w-full h-[90px]" aria-hidden="true">
+    <text x="8"  y="20" fill="#5A6B80" font-size="10" font-family="monospace">THEN</text>
+    <rect x="8"  y="26" width="24"  height="16" rx="3" fill="#2C3B4E"/>
+    <text x="38" y="39" fill="#8496AB" font-size="12" font-family="monospace">3–4%</text>
+    <text x="8"  y="62" fill="#5A6B80" font-size="10" font-family="monospace">NOW</text>
+    <rect x="8"  y="68" width="150" height="16" rx="3" fill="#E5A25C"/>
+    <text x="164" y="81" fill="#E7EEF7" font-size="12" font-family="monospace">15–25%</text>
+  </svg>`,
+
+  wiring: `<svg viewBox="0 0 240 90" class="w-full h-[90px]" aria-hidden="true">
+    <line x1="12" y1="70" x2="228" y2="70" stroke="#2C3B4E" stroke-width="1.5"/>
+    ${[0,1,2,3,4].map(i => `<line x1="${12 + i*54}" y1="66" x2="${12 + i*54}" y2="74" stroke="#2C3B4E" stroke-width="1.5"/>`).join('')}
+    <text x="6"   y="86" fill="#5A6B80" font-size="9" font-family="monospace">10</text>
+    <text x="150" y="86" fill="#8FB8E8" font-size="9" font-family="monospace">18</text>
+    <text x="216" y="86" fill="#5A6B80" font-size="9" font-family="monospace">25</text>
+    <path d="M12 52 Q 60 14 120 26 T 228 20" stroke="#8FB8E8" stroke-width="2" fill="none"/>
+    <rect x="12" y="10" width="152" height="52" fill="#8FB8E8" opacity=".07"/>
+    <line x1="164" y1="10" x2="164" y2="70" stroke="#8FB8E8" stroke-width="1.5" stroke-dasharray="3 3"/>
+    <text x="16" y="24" fill="#8496AB" font-size="9" font-family="monospace">still wiring</text>
+  </svg>`,
+
+  dawn: `<svg viewBox="0 0 240 90" class="w-full h-[90px]" aria-hidden="true">
+    <line x1="10" y1="72" x2="230" y2="72" stroke="#2C3B4E" stroke-width="1.5"/>
+    <path d="M10 72 A 110 110 0 0 1 230 72" stroke="#79C8B4" stroke-width="2" fill="none" opacity=".55"/>
+    <circle cx="120" cy="72" r="16" fill="#8FB8E8" opacity=".18"/>
+    <circle cx="120" cy="72" r="9"  fill="#8FB8E8"/>
+  </svg>`
+};
+
+const MONTAGE = [
+  { art: 'decade',
+    head: 'The last ten years were the Afrobeats decade.',
+    body: 'The music went global, and this travelled with it. One study of Afrobeat content found more than three quarters of it carried drug themes, and that what fans saw in the videos tracked closely with how normal they came to think it was.',
+    src: 'Rhythm and Risk, Indonesian Journal of Learning Education and Counseling' },
+
+  { art: 'wallpaper',
+    head: 'Nobody sat you down and offered you a habit.',
+    body: 'It was in the music, at the parties, in the room. Not one decision you made, but a hundred small ones that never felt like decisions at the time.' },
+
+  { art: 'circle',
+    head: 'It is not only a drug. It is how your circle works.',
+    body: 'Research with young adults in a Nigerian city found cannabis working as a social lubricant — building friendships, softening the sting of being judged, creating the trust people needed to share things. That is why stopping can feel like losing people, not just losing a habit.',
+    src: 'Dumbili, Cannabis Normalization Among Young Adults in a Nigerian City, Journal of Drug Issues 2020' },
+
+  { art: 'potency',
+    head: 'The thing itself changed under you.',
+    body: 'Cannabis in earlier decades ran about 3 to 4 percent THC. What is sold now runs 15 to 25 percent. Whatever an older relative got away with at your age, they were not using this.',
+    src: 'Journal of Dual Diagnosis 2023' },
+
+  /* only shown to people it is actually about */
+  { art: 'wiring', when: s => s.startAge && Number(s.startAge) < 18,
+    head: 'You were still growing when it started.',
+    body: 'The brain keeps wiring itself right through the teenage years, and the system cannabis acts on helps run that work. Research finds the risk of a psychotic disorder is roughly doubled when use begins before 16 to 18.',
+    src: 'Age-dependent association of cannabis use with risk of psychotic disorder, Psychological Medicine' },
+
+  { art: 'dawn',
+    head: 'None of this was you being weak. It was a setup.',
+    body: 'You grew up inside something built to keep you in it. That is not a character flaw, and reading it as one has never helped anybody stop. A setup is a thing you can walk out of. That is what today is.' }
+];
+
+const montageCards = () => MONTAGE.filter(c => !c.when || c.when(state));
+
+let montageIndex = 0;
+
+function renderMontage() {
+  const cards = montageCards();
+
+  $('#montageTrack').innerHTML = cards.map(c => `
+    <article class="snap-center shrink-0 w-full h-full overflow-y-auto px-6 flex flex-col justify-center">
+      <div class="max-w-md mx-auto w-full py-4">
+        <div class="mb-7 opacity-90">${MONTAGE_ART[c.art]}</div>
+        <h2 class="font-display text-[1.7rem] leading-[1.15] font-extrabold tracking-tight mb-4">${escapeHtml(c.head)}</h2>
+        <p class="text-muted text-[15px] leading-relaxed">${escapeHtml(c.body)}</p>
+        ${c.src ? `<p class="text-[11px] text-faint/70 mt-5 italic leading-relaxed">${escapeHtml(c.src)}</p>` : ''}
+      </div>
+    </article>`).join('');
+
+  $('#montageDots').innerHTML = cards.map((_, i) =>
+    `<span class="block h-1.5 rounded-full transition-all ${i === montageIndex ? 'w-5 bg-dawn' : 'w-1.5 bg-line'}"></span>`
+  ).join('');
+
+  $('#montagePrev').hidden = montageIndex === 0;
+  $('#montageNext').textContent = montageIndex === cards.length - 1 ? 'Start' : 'Next';
+  icons();
+}
+
+function goMontage(i) {
+  const cards = montageCards();
+  montageIndex = Math.max(0, Math.min(cards.length - 1, i));
+  const track = $('#montageTrack');
+  track.scrollTo({ left: montageIndex * track.clientWidth, behavior: 'smooth' });
+  renderMontage();
+}
+
+function openMontage() {
+  montageIndex = 0;
+  $('#montage').hidden = false;
+  renderMontage();
+  $('#montageTrack').scrollLeft = 0;
+}
+
+function closeMontage() {
+  $('#montage').hidden = true;
+  state.montageSeen = true;
+  save();
+}
+
+/* Swipe is the primary gesture on a phone, so keep the dots honest when the
+   user scrolls the track directly rather than using the button. */
+let montageScrollTimer;
+$('#montageTrack').addEventListener('scroll', () => {
+  clearTimeout(montageScrollTimer);
+  montageScrollTimer = setTimeout(() => {
+    const track = $('#montageTrack');
+    const i = Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
+    if (i !== montageIndex) { montageIndex = i; renderMontage(); }
+  }, 90);
+});
+
+$('#montageNext').addEventListener('click', () => {
+  if (montageIndex >= montageCards().length - 1) return closeMontage();
+  goMontage(montageIndex + 1);
+});
+$('#montagePrev').addEventListener('click', () => goMontage(montageIndex - 1));
+$('#montageClose').addEventListener('click', closeMontage);
+$('#montageOpen').addEventListener('click', openMontage);
+
+/* escape closes the montage; the craving timer still refuses to be dismissed
+   this easily, which is deliberate and lives in its own handler */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('#montage').hidden) closeMontage();
+  if (!$('#montage').hidden && e.key === 'ArrowRight') goMontage(montageIndex + 1);
+  if (!$('#montage').hidden && e.key === 'ArrowLeft')  goMontage(montageIndex - 1);
+});
 
 /* ---------------- rendering: static lists ---------------- */
 function renderMilestones() {
@@ -925,6 +1099,9 @@ function commitOnboard() {
   state.why = $('#onboardWhy').value.trim();
   save();
   boot();
+  // the montage explains why any of this happened; it lands better once the
+  // clock is already running than as another thing to get through first
+  if (!state.montageSeen) openMontage();
 }
 
 /* Four taps cover almost everyone; the picker is there for the rest. */

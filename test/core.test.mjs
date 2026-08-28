@@ -79,7 +79,7 @@ function loadApp({ storage = new Map() } = {}) {
     AGE_BANDS, MILESTONES, BADGES, ARC_STOPS,
     arcPct, arcSpanYears, arcSpanDays,
     ARC_MIN_YEARS, ARC_MAX_YEARS,
-    ONBOARD_LAST
+    ONBOARD_LAST, MONTAGE, MONTAGE_ART, montageCards
   })`, sandbox);
 
   return { ...collected, ageBand: sandbox.ageBand, profileFor: sandbox.profileFor,
@@ -278,6 +278,58 @@ test('corrupt stored state falls back to defaults instead of throwing', () => {
 test('the storage key is the renamed one', () => {
   const app = loadApp();
   assert.equal(app.KEY, 'edondo.v1');
+});
+
+/* ---------------- the montage ---------------- */
+
+test('every montage claim carries a source, and every card has art', () => {
+  const app = loadApp();
+  for (const c of app.MONTAGE) {
+    assert.ok(c.head && c.body, 'a montage card is missing text');
+    assert.ok(app.MONTAGE_ART[c.art], `card "${c.head}" points at missing art "${c.art}"`);
+  }
+  // cards stating a research finding must cite it; the reflective ones need not
+  const factual = app.MONTAGE.filter(c => /research|study|percent|risk|found/i.test(c.body));
+  assert.ok(factual.length >= 3, 'expected several evidence-bearing cards');
+  for (const c of factual) {
+    assert.ok(c.src && c.src.trim(), `"${c.head}" makes a factual claim with no source`);
+  }
+});
+
+test('the developmental card is shown only to people who started before 18', () => {
+  const app = loadApp();
+  const wiring = app.MONTAGE.find(c => c.art === 'wiring');
+  assert.ok(wiring.when, 'the developmental card must be conditional');
+  assert.equal(!!wiring.when({ startAge: 14 }), true);
+  assert.equal(!!wiring.when({ startAge: 22 }), false);
+  assert.equal(!!wiring.when({ startAge: null }), false);
+});
+
+test('montageCards filters by the current state', () => {
+  const app = loadApp();
+  const all = app.MONTAGE.length;
+
+  app.state.startAge = 14;
+  assert.equal(app.montageCards().length, all, 'an early starter should see every card');
+
+  app.state.startAge = 25;
+  assert.equal(app.montageCards().length, all - 1, 'a late starter should not see the teen card');
+});
+
+test('the montage ends on the reframe, not on a statistic', () => {
+  const app = loadApp();
+  const last = app.MONTAGE[app.MONTAGE.length - 1];
+  assert.ok(!last.when, 'the closing card must never be conditional — everyone needs it');
+  assert.match(last.head + ' ' + last.body, /setup/i,
+    'the last beat turns explanation into something actionable; keep it');
+});
+
+test('the montage never blames the music', () => {
+  const app = loadApp();
+  const text = app.MONTAGE.map(c => c.head + ' ' + c.body).join(' ');
+  for (const bad of [/bad music/i, /stop listening/i, /music is to blame/i, /blame the/i]) {
+    assert.ok(!bad.test(text), `montage copy drifted into blaming: ${bad}`);
+  }
 });
 
 /* ---------------- markup guards ----------------
