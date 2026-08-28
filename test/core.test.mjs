@@ -332,6 +332,37 @@ test('the montage never blames the music', () => {
   }
 });
 
+/* ---------------- deploy ---------------- */
+
+test('every local file the service worker precaches is in the deploy folder', () => {
+  const sw = readFileSync(join(here, '..', 'sw.js'), 'utf8');
+  const build = readFileSync(join(here, '..', 'build.mjs'), 'utf8');
+
+  const shell = [...sw.matchAll(/'\.\/([^']*)'/g)].map(m => m[1]).filter(Boolean);
+  const deploy = build.split('const DEPLOY = [')[1].split(']')[0];
+
+  for (const path of shell) {
+    const top = path.split('/')[0];
+    assert.ok(deploy.includes(`'${top}'`),
+      `sw.js precaches "${path}" but build.mjs never copies "${top}" into dist/ — it would 404 in production`);
+  }
+});
+
+test('the deploy folder excludes source and docs', () => {
+  const build = readFileSync(join(here, '..', 'build.mjs'), 'utf8');
+  const deploy = build.split('const DEPLOY = [')[1].split(']')[0];
+  for (const f of ['CLAUDE.md', 'README.md', 'package.json', 'build.mjs', 'test']) {
+    assert.ok(!deploy.includes(`'${f}'`), `${f} must not be served as a web file`);
+  }
+});
+
+test('both hosts publish the same directory the build writes', () => {
+  const vercel = JSON.parse(readFileSync(join(here, '..', 'vercel.json'), 'utf8'));
+  const netlify = readFileSync(join(here, '..', 'netlify.toml'), 'utf8');
+  assert.equal(vercel.outputDirectory, 'dist');
+  assert.match(netlify, /publish\s*=\s*"dist"/);
+});
+
 /* ---------------- markup guards ----------------
    These are string checks against index.html rather than real layout tests, but
    they pin two mistakes that already happened once: onboarding grew taller than

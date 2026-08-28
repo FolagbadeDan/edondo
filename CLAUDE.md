@@ -138,8 +138,14 @@ The rule that replaces it: **the web output must stay a static folder you can dr
 Netlify.** No server, no runtime, no framework.
 
 ```
-npm test     # the arithmetic
-npm run build  # regenerate edondo.html
+npm test       # the arithmetic
+npm run build  # regenerate edondo.html and write dist/
 ```
+
+`npm run build` writes `dist/`, which is the only thing deployed. It contains the app and
+nothing else — no CLAUDE.md, no tests, no build script served as web files. Both Vercel and
+Netlify publish `dist`, and a test asserts they agree with each other and with the service
+worker's precache list. If you add a file the app loads at runtime, add it to `DEPLOY` in
+`build.mjs` or it will 404 in production while working perfectly on localhost.
 
 Still to do: compile Tailwind to a static stylesheet and drop the CDN (Phase 4).

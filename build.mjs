@@ -9,12 +9,13 @@
    replaces the Tailwind CDN with a compiled stylesheet; until then this file is a
    convenience copy, not the offline story. index.html plus sw.js is the real app. */
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = f => readFileSync(join(here, f), 'utf8');
+const dist = join(here, 'dist');
 
 const html = read('index.html');
 const app = read('app.js');
@@ -40,5 +41,30 @@ const out = html
 
 writeFileSync(join(here, 'edondo.html'), out, 'utf8');
 
+/* dist/ is what actually gets deployed. Keeping it separate from the repo root
+   means CLAUDE.md, the tests and this script are never served as web files, and
+   it gives Vercel and Netlify one unambiguous directory to publish. It stays a
+   plain static folder you can drag onto Netlify by hand — that is the rule that
+   replaced "no build step", and it is the whole point of doing it this way. */
+const DEPLOY = [
+  'index.html',
+  'app.js',
+  'sw.js',
+  'manifest.webmanifest',
+  'edondo.html',
+  'icons'
+];
+
+rmSync(dist, { recursive: true, force: true });
+mkdirSync(dist, { recursive: true });
+
+const missing = DEPLOY.filter(f => !existsSync(join(here, f)));
+if (missing.length) {
+  console.error(`build failed: missing deploy files: ${missing.join(', ')}`);
+  process.exit(1);
+}
+for (const f of DEPLOY) cpSync(join(here, f), join(dist, f), { recursive: true });
+
 const kb = n => (n / 1024).toFixed(1) + 'kb';
 console.log(`built edondo.html  ${kb(out.length)}  (index.html ${kb(html.length)} + app.js ${kb(app.length)})`);
+console.log(`dist/ ready with ${DEPLOY.length} entries: ${DEPLOY.join(', ')}`);

@@ -5,13 +5,18 @@ account, no analytics, no network calls. All state lives in `localStorage` on th
 
 ## Deploy
 
-**Netlify** — drag this folder onto https://app.netlify.com/drop, or connect the repo.
-Build command: none. Publish directory: `.`
+`npm run build` writes everything deployable into `dist/`. That folder is the site — it
+holds only `index.html`, `app.js`, `sw.js`, the manifest, the icons and the single-file
+build, so source and docs are never served as web files.
 
-**Vercel** — `vercel --prod`, or import the repo. Framework preset: Other.
+**Netlify** — connect the repo. Build command `npm run build`, publish directory `dist`.
+To deploy by hand instead, run the build and drag `dist/` onto https://app.netlify.com/drop.
 
-Both need no build step. `netlify.toml` and `vercel.json` are already configured to stop the
-service worker from being cached, which otherwise strands users on an old version.
+**Vercel** — import the repo. Framework preset: Other. `vercel.json` already sets the
+output directory, so no dashboard configuration is needed.
+
+`netlify.toml` and `vercel.json` both stop the service worker from being cached, which
+otherwise strands users on an old version.
 
 ## Local
 
