@@ -458,6 +458,35 @@ test('data can be imported, not only exported', () => {
   assert.match(indexHtml, /id="importFile"/);
 });
 
+test('the montage track does not set CSS smooth scrolling', () => {
+  const track = indexHtml.match(/<div id="montageTrack"[^>]*>/)[0];
+  assert.ok(!/scroll-smooth/.test(track),
+    'CSS scroll-behavior:smooth makes a direct scrollLeft assignment animate too, so the JS fallback ' +
+    'interrupts and restarts the scroll instead of rescuing it, and Next never advances on a phone');
+  assert.match(track, /snap-x/, 'swipe still needs snap');
+});
+
+test('montage navigation never rebuilds the track', () => {
+  const app = readFileSync(join(here, '..', 'app.js'), 'utf8');
+  const goMontage = app.split('function goMontage(')[1].split('\n}')[0];
+  const chrome = app.split('function renderMontageChrome(')[1].split('\n}')[0];
+  for (const [name, body] of [['goMontage', goMontage], ['renderMontageChrome', chrome]]) {
+    assert.ok(!/montageTrack'\)\.innerHTML\s*=/.test(body),
+      `${name} writes to the track's innerHTML, which resets scrollLeft and cancels the scroll mid-flight`);
+  }
+});
+
+test('a new service worker reloads the page instead of stranding the user', () => {
+  const app = readFileSync(join(here, '..', 'app.js'), 'utf8');
+  assert.match(app, /controllerchange/, 'without this a user must clear site data to see a release');
+  assert.match(app, /hadController/, 'the first install must not trigger a pointless reload');
+});
+
+test('smoke animation is opt-out under reduced motion', () => {
+  const reduced = indexHtml.split('@media (prefers-reduced-motion: reduce)').slice(1).join('');
+  assert.match(reduced, /\.smoke i/, 'drifting smoke must stop for users who ask for less motion');
+});
+
 test('the quit-time chips cover the common answers', () => {
   const chips = [...indexHtml.matchAll(/data-quit="([^"]+)"/g)].map(m => m[1]);
   assert.ok(chips.includes('0'), 'needs a "just now" option');

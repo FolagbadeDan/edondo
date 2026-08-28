@@ -357,41 +357,90 @@ const montageCards = () => MONTAGE.filter(c => !c.when || c.when(state));
 
 let montageIndex = 0;
 
-function renderMontage() {
-  const cards = montageCards();
+/* Cards are built ONCE, when the montage opens.
 
-  $('#montageTrack').innerHTML = cards.map(c => `
+   They used to be rebuilt on every navigation, which is what broke the Next
+   button on phones: rewriting innerHTML destroys the cards and resets
+   scrollLeft to 0, cancelling the smooth scroll that had just started. On a
+   fast machine the scroll usually won the race; on a real phone it lost, so
+   only swiping worked. Never touch the track's innerHTML during navigation. */
+function buildMontage() {
+  $('#montageTrack').innerHTML = montageCards().map(c => `
     <article class="snap-center shrink-0 w-full h-full overflow-y-auto px-6 flex flex-col justify-center">
-      <div class="max-w-md mx-auto w-full py-4">
+      <div class="mcard max-w-md mx-auto w-full py-4">
         <div class="mb-7 opacity-90">${MONTAGE_ART[c.art]}</div>
         <h2 class="font-display text-[1.7rem] leading-[1.15] font-extrabold tracking-tight mb-4">${escapeHtml(c.head)}</h2>
         <p class="text-muted text-[15px] leading-relaxed">${escapeHtml(c.body)}</p>
         ${c.src ? `<p class="text-[11px] text-faint/70 mt-5 italic leading-relaxed">${escapeHtml(c.src)}</p>` : ''}
       </div>
     </article>`).join('');
+  icons();
+}
+
+/* Only the chrome changes as you move — dots, buttons, and how much smoke is
+   left. Cheap, and it cannot disturb the scroll position. */
+function renderMontageChrome() {
+  const cards = montageCards();
 
   $('#montageDots').innerHTML = cards.map((_, i) =>
-    `<span class="block h-1.5 rounded-full transition-all ${i === montageIndex ? 'w-5 bg-dawn' : 'w-1.5 bg-line'}"></span>`
+    `<span class="block h-1.5 rounded-full transition-all duration-300 ${i === montageIndex ? 'w-5 bg-dawn' : 'w-1.5 bg-line'}"></span>`
   ).join('');
 
   $('#montagePrev').hidden = montageIndex === 0;
   $('#montageNext').textContent = montageIndex === cards.length - 1 ? 'Start' : 'Next';
-  icons();
+
+  $$('#montageTrack .mcard').forEach((el, i) => el.classList.toggle('is-active', i === montageIndex));
+
+  /* The smoke thins out as the sequence advances and is gone by the last card.
+     That is the argument the montage is making, drawn rather than stated: you
+     came out of a haze, and the haze is not permanent. */
+  const last = Math.max(1, cards.length - 1);
+  $('#montageSmoke').style.opacity = String(Math.max(0, 1 - montageIndex / last).toFixed(3));
 }
 
 function goMontage(i) {
   const cards = montageCards();
-  montageIndex = Math.max(0, Math.min(cards.length - 1, i));
+  const target = Math.max(0, Math.min(cards.length - 1, i));
+  if (target === montageIndex && $('#montageTrack').scrollLeft === cardOffset(target)) return;
+  montageIndex = target;
+  scrollMontageTo(target);
+  renderMontageChrome();
+}
+
+const cardOffset = i => {
+  const card = $$('#montageTrack article')[i];
+  return card ? card.offsetLeft : i * $('#montageTrack').clientWidth;
+};
+
+/* offsetLeft rather than index × width, because it stays correct if padding or
+   gaps ever change.
+
+   The timeout is a genuine fallback: smooth scrolling inside a mandatory
+   scroll-snap container is unreliable on iOS and some Android browsers. It only
+   works because the track does NOT set CSS scroll-behavior: smooth — with that
+   set, assigning scrollLeft animates too, so the "fallback" would interrupt and
+   restart the scroll it was meant to rescue, and the card never arrives. That
+   is exactly the bug this replaced. 600ms is past a normal smooth scroll. */
+let montageScrollFallback;
+function scrollMontageTo(i) {
   const track = $('#montageTrack');
-  track.scrollTo({ left: montageIndex * track.clientWidth, behavior: 'smooth' });
-  renderMontage();
+  const left = cardOffset(i);
+  const reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  track.scrollTo({ left, behavior: reduced ? 'auto' : 'smooth' });
+
+  clearTimeout(montageScrollFallback);
+  montageScrollFallback = setTimeout(() => {
+    if (Math.abs(track.scrollLeft - left) > 4) track.scrollLeft = left;   // instant: CSS behavior is auto
+  }, 600);
 }
 
 function openMontage() {
   montageIndex = 0;
   $('#montage').hidden = false;
-  renderMontage();
+  buildMontage();
   $('#montageTrack').scrollLeft = 0;
+  renderMontageChrome();
 }
 
 function closeMontage() {
@@ -408,9 +457,9 @@ $('#montageTrack').addEventListener('scroll', () => {
   montageScrollTimer = setTimeout(() => {
     const track = $('#montageTrack');
     const i = Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
-    if (i !== montageIndex) { montageIndex = i; renderMontage(); }
+    if (i !== montageIndex) { montageIndex = i; renderMontageChrome(); }
   }, 90);
-});
+}, { passive: true });
 
 $('#montageNext').addEventListener('click', () => {
   if (montageIndex >= montageCards().length - 1) return closeMontage();
@@ -1273,7 +1322,25 @@ document.addEventListener('keydown', e => {
 });
 
 /* ---------------- PWA ---------------- */
+/* When a new service worker takes over, reload once so the running page is not
+   left as old markup driven by new code (or the reverse). Without this a user
+   has to know to clear site data to see a release, which no user knows.
+
+   `hadController` guards the first install, where controllerchange fires simply
+   because there was no controller before — there is nothing stale to refresh
+   then, and reloading would be a pointless flash on someone's first visit.
+   `reloading` guards against a reload loop if anything else claims the page. */
 if ('serviceWorker' in navigator) {
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloading) return;
+    reloading = true;
+    save();                 // never lose state to an update
+    location.reload();
+  });
+
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   });

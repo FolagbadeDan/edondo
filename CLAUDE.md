@@ -39,6 +39,13 @@ state, data, and logic.
 `index.html` + `app.js`. Never edit it directly. (The old `clearance.html` was documented as
 generated while nothing generated it, so it silently drifted.)
 
+The montage track's cards are built **once**, on open. Navigation only updates dots,
+buttons and smoke opacity. Rewriting the track's `innerHTML` during navigation destroys the
+cards and resets `scrollLeft`, which cancels the scroll mid-flight — that is what broke the
+Next button on phones while swiping still worked. The track also must not carry Tailwind's
+`scroll-smooth`: with CSS `scroll-behavior: smooth`, assigning `scrollLeft` animates too, so
+the JS fallback interrupts the scroll it exists to rescue. Tests guard both.
+
 Two clocks: `tick()` every second (counters, rings, countdowns), `slowTick()` every minute
 (re-renders lists when a milestone unlocks). `visibilitychange` refreshes both on resume.
 
@@ -82,6 +89,20 @@ primary), `oxygen` (seafoam, completion), `ember` (craving state), `alarm` (warn
 The hero ring breathes at 5.5 cycles/min — a real coherent-breathing cadence — and all
 motion respects `prefers-reduced-motion`. Do not add gradients-as-decoration or a bright
 acid-green accent.
+
+### Smoke
+
+Smoke is **subject matter, not decoration** — it is the thing being left behind. It appears
+in exactly two places, and only because it means something in both: drifting across the
+montage and thinning to nothing by the final card (the argument the montage is making,
+drawn instead of stated), and on the craving overlay where it breathes at the same 5.5
+breaths per minute as the hero ring, so watching it paces the user's breathing. Never add
+it as a background texture; that is the gradients-as-decoration rule it would break.
+
+Implemented as three blurred radial blobs animating transform and opacity only, at three
+different periods so they never visibly loop together. No canvas — this has to be cheap on
+a low-end Android that needs to hold a charge all day. All of it stops under
+`prefers-reduced-motion`.
 
 **Planned:** a light theme alongside the dark one, driven entirely by tokens, because dark
 screens are hard to read in Nigerian daylight. When that lands, no colour may be defined
