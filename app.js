@@ -50,7 +50,8 @@ const defaults = () => ({
   sessions: 0,
   focusMinutes: 0,
   gateUnlockedFor: null,
-  montageSeen: false
+  montageSeen: false,
+  celebratedThrough: null   // how many milestones the user has been shown
 });
 
 /* Migrations run oldest-first. Each one takes the stored blob and returns it
@@ -142,11 +143,11 @@ const MILESTONES = [
     desc: 'Most acute symptoms clear within one to two weeks. Some psychological symptoms run to three weeks in very heavy users. The physical fight is essentially over.',
     src: 'Cleveland Clinic; DSM-5' },
 
-  { at: 4 * WEEK, name: 'CB1 receptors normalised',
+  { at: 4 * WEEK, big: true, name: 'CB1 receptors normalised',
     desc: 'Daily use downregulates brain CB1 receptors by roughly 15–20%. PET imaging shows that after about 28 days of abstinence, receptor density is statistically indistinguishable from people who never used. This is the four-week reset, and it is real.',
     src: 'Hirvonen et al., Molecular Psychiatry 2012; D\'Souza et al. 2016' },
 
-  { at: 30 * DAY, name: 'THC fully eliminated',
+  { at: 30 * DAY, big: true, name: 'THC fully eliminated',
     desc: 'Cannabis metabolites store in fat and leave slowly. In heavy daily users, urinary THC-COOH can take up to 30 days of verified abstinence to fully clear. Past this point there is nothing of it left in you.',
     src: 'Schuster et al., J Psychopharmacol 2020' },
 
@@ -158,7 +159,7 @@ const MILESTONES = [
     desc: 'Cannabis smoke causes cough, sputum and wheeze through airway inflammation rather than the fixed structural damage tobacco causes. Because it is inflammatory, it reverses: quitters end up no more likely to have chronic respiratory symptoms than people who never smoked.',
     src: 'Hancox et al., Eur Respir J 2015; NASEM 2017' },
 
-  { at: YEAR, name: 'Structural habit rewiring',
+  { at: YEAR, big: true, name: 'Structural habit rewiring',
     desc: 'A full year of birthdays, arguments, boredom and celebration handled without it. The cues that used to trigger a smoke have been overwritten by other responses rather than just suppressed.',
     src: 'Relapse-prevention literature' },
 
@@ -214,10 +215,10 @@ function profileFor(state) {
 }
 
 const BADGES = [
-  { at: 3 * YEAR, name: 'Excess risk largely averted',
+  { at: 3 * YEAR, big: true, name: 'Excess risk largely averted',
     desc: 'Pooled data across 1.48 million adults found the mortality benefit of quitting is already measurable by three years. For people who quit before 40, roughly 90% of the excess death risk from continued smoking is averted.',
     src: 'Cho et al., NEJM Evidence 2024' },
-  { at: 10 * YEAR, name: 'Trajectory reset',
+  { at: 10 * YEAR, big: true, name: 'Trajectory reset',
     desc: 'At ten or more years since quitting, about ten years of life lost are averted and survival is similar to people who never smoked. The decade of smoke is, statistically, undone.',
     src: 'Cho et al., NEJM Evidence 2024; Jha et al., NEJM 2013' }
 ];
@@ -476,6 +477,113 @@ document.addEventListener('keydown', e => {
   if (!$('#montage').hidden && e.key === 'ArrowRight') goMontage(montageIndex + 1);
   if (!$('#montage').hidden && e.key === 'ArrowLeft')  goMontage(montageIndex - 1);
 });
+
+/* ---------------- milestone unlock ----------------
+   Reaching a milestone used to be silent — the list re-rendered and that was
+   it. Routine milestones now get smoke clearing, which is the motif already in
+   use and says "the thing you are leaving is going" rather than "well done".
+   The five landmark ones marked `big` also get confetti.
+
+   Confetti is deliberately drawn from the app's own palette rather than a
+   rainbow, and it is short. It is the one place the tone rule against being
+   congratulatory is relaxed, because these five moments are the ones people
+   actually count toward. */
+
+const CONFETTI_COLORS = ['#8FB8E8', '#79C8B4', '#E5A25C', '#E7EEF7'];
+let confettiRaf = null;
+
+function fireConfetti(canvas, ms = 1500) {
+  const reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) return;
+
+  const ctx = canvas.getContext && canvas.getContext('2d');
+  if (!ctx) return;
+
+  // unhide BEFORE measuring: a hidden element reports clientWidth 0, which
+  // sized the canvas to nothing and drew the confetti into the void
+  canvas.hidden = false;
+
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);   // cap: cheap phones
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) { canvas.hidden = true; return; }
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const bits = Array.from({ length: 70 }, () => ({
+    x: w / 2 + (Math.random() - .5) * w * .35,
+    y: h * .42 + (Math.random() - .5) * 40,
+    vx: (Math.random() - .5) * 7,
+    vy: -6 - Math.random() * 7,
+    size: 4 + Math.random() * 5,
+    rot: Math.random() * Math.PI,
+    vr: (Math.random() - .5) * .3,
+    color: CONFETTI_COLORS[(Math.random() * CONFETTI_COLORS.length) | 0]
+  }));
+
+  const start = performance.now();
+  cancelAnimationFrame(confettiRaf);
+
+  (function frame(now) {
+    const t = now - start;
+    ctx.clearRect(0, 0, w, h);
+    if (t > ms) { canvas.hidden = true; return; }
+
+    const fade = t > ms * .6 ? 1 - (t - ms * .6) / (ms * .4) : 1;
+    for (const b of bits) {
+      b.vy += .28;                 // gravity
+      b.vx *= .992;
+      b.x += b.vx; b.y += b.vy; b.rot += b.vr;
+
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, fade);
+      ctx.translate(b.x, b.y);
+      ctx.rotate(b.rot);
+      ctx.fillStyle = b.color;
+      ctx.fillRect(-b.size / 2, -b.size / 4, b.size, b.size / 2);
+      ctx.restore();
+    }
+    confettiRaf = requestAnimationFrame(frame);
+  })(start);
+}
+
+function showUnlock(m) {
+  const days = Math.max(1, Math.round(m.at / DAY));
+  $('#unlockEyebrow').textContent = m.big ? 'Landmark reached' : 'Milestone reached';
+  $('#unlockDay').textContent = days >= 365 ? `${Math.round(days / 365)}y` : `${days}d`;
+  $('#unlockName').textContent = m.name;
+  $('#unlockDesc').textContent = m.desc;
+  $('#unlockSrc').textContent = m.src || '';
+  $('#unlock').hidden = false;
+
+  // the ring completes in one deliberate sweep rather than bouncing
+  const ring = $('#unlockRing');
+  ring.style.strokeDashoffset = '377';
+  requestAnimationFrame(() => { ring.style.strokeDashoffset = '0'; });
+
+  // smoke clears on every unlock; confetti only on the landmarks
+  const smoke = $('#unlockSmoke');
+  smoke.style.opacity = '1';
+  setTimeout(() => { smoke.style.opacity = '0'; }, 420);
+
+  if (m.big) setTimeout(() => fireConfetti($('#unlockConfetti')), 260);
+}
+
+function closeUnlock() {
+  $('#unlock').hidden = true;
+  cancelAnimationFrame(confettiRaf);
+  $('#unlockConfetti').hidden = true;
+  if (unlockQueue.length) showUnlock(unlockQueue.shift());
+}
+
+/* If several milestones passed while the app was closed, show them one after
+   another rather than firing five bursts at once. */
+let unlockQueue = [];
+function queueUnlocks(list) {
+  unlockQueue = unlockQueue.concat(list);
+  if ($('#unlock').hidden && unlockQueue.length) showUnlock(unlockQueue.shift());
+}
+
+$('#unlockClose').addEventListener('click', closeUnlock);
 
 /* ---------------- rendering: static lists ---------------- */
 function renderMilestones() {
@@ -770,10 +878,36 @@ function tick() {
   });
 }
 
+const milestonesReached = () => MILESTONES.filter(m => elapsed() >= m.at).length;
+
+/* `celebratedThrough` is how many milestones the user has already been shown.
+   It is persisted, so a milestone passed while the app was closed is still
+   acknowledged when they next open it — missing "CB1 receptors normalised"
+   because you were asleep would be a poor trade.
+
+   It is resynced silently whenever history changes underneath us: first run,
+   an import, or an edited quit date. Otherwise moving your quit date back a
+   year would fire seven overlays in a row. */
+function resyncMilestones() {
+  state.celebratedThrough = milestonesReached();
+  save();
+}
+
 let lastMilestoneCount = -1;
 function slowTick() {
   const t = elapsed();
-  const reached = MILESTONES.filter(m => t >= m.at).length;
+  const reached = milestonesReached();
+
+  if (state.celebratedThrough === null || state.celebratedThrough === undefined) {
+    resyncMilestones();                       // first run: acknowledge history quietly
+  } else if (reached > state.celebratedThrough) {
+    queueUnlocks(MILESTONES.slice(state.celebratedThrough, reached));
+    state.celebratedThrough = reached;
+    save();
+  } else if (reached < state.celebratedThrough) {
+    resyncMilestones();                       // clock moved backwards
+  }
+
   if (reached !== lastMilestoneCount) {
     lastMilestoneCount = reached;
     renderMilestones();
@@ -1011,7 +1145,7 @@ $('#quitSave').addEventListener('click', () => {
   if (!v) return;
   const ts = new Date(v).getTime();
   if (ts > Date.now()) { toast('That is in the future'); return; }
-  state.quitTs = ts; save(); lastMilestoneCount = -1; tick(); slowTick();
+  state.quitTs = ts; resyncMilestones(); lastMilestoneCount = -1; tick(); slowTick();
   toast('Clock updated');
 });
 $('#exportBtn').addEventListener('click', () => {
@@ -1049,6 +1183,7 @@ $('#importFile').addEventListener('change', async e => {
   if (!confirm(`Replace everything on this phone with the imported file (${when})? Your current data is erased.`)) return;
 
   state = migrate(incoming);
+  state.celebratedThrough = null;   // resync to the imported history, silently
   save();
   lastMilestoneCount = -1;
   boot();

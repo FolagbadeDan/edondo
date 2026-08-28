@@ -193,6 +193,8 @@ tailwind.config = {
   .smoke--breath { animation: breathe 10.9s ease-in-out infinite; }
 
   #montageSmoke { transition: opacity 700ms cubic-bezier(.2,.7,.3,1); }
+  /* Slower on the unlock: the smoke clearing IS the celebration, so let it read. */
+  #unlockSmoke { transition: opacity 1600ms cubic-bezier(.2,.7,.3,1); }
 
   /* Montage card content settles in when it becomes the active card. */
   .mcard { opacity: .55; transform: translateY(8px); transition: opacity .5s ease, transform .5s cubic-bezier(.2,.7,.3,1); }
@@ -658,6 +660,33 @@ tailwind.config = {
       </button>
     </div>
   </nav>
+</div>
+
+<!-- ══════════════ MILESTONE UNLOCK ══════════════
+     Nothing marked the moment before: a milestone passed and the list quietly
+     re-rendered. Routine milestones get smoke clearing — the motif already
+     means "the thing you are leaving is going". The five landmark ones
+     (CB1 reset, THC cleared, 1 year, 3 years, 10 years) also get confetti.
+     Both are skipped entirely under prefers-reduced-motion. -->
+<div id="unlock" class="fixed inset-0 z-[85] bg-ink/95 backdrop-blur-sm flex items-center justify-center p-6 overflow-hidden" hidden>
+  <div id="unlockSmoke" class="smoke" aria-hidden="true"><i></i><i></i><i></i></div>
+  <canvas id="unlockConfetti" class="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true" hidden></canvas>
+
+  <div class="relative z-10 w-full max-w-md text-center" role="status" aria-live="polite">
+    <p id="unlockEyebrow" class="eyebrow text-oxygen mb-4">Milestone reached</p>
+    <div class="relative w-[132px] h-[132px] mx-auto mb-6 flex items-center justify-center">
+      <svg viewBox="0 0 132 132" class="absolute inset-0 w-full h-full -rotate-90">
+        <circle class="ring-track" cx="66" cy="66" r="60" fill="none" stroke-width="3"/>
+        <circle id="unlockRing" class="ring-fill" cx="66" cy="66" r="60" fill="none" stroke="#79C8B4"
+          stroke-width="3" stroke-linecap="round" stroke-dasharray="377" stroke-dashoffset="377"/>
+      </svg>
+      <div id="unlockDay" class="font-mono tnum text-[30px] leading-none font-medium tracking-tighter text-oxygen">—</div>
+    </div>
+    <h2 id="unlockName" class="font-display text-[1.7rem] leading-[1.15] font-extrabold tracking-tight mb-3"></h2>
+    <p id="unlockDesc" class="text-muted text-[15px] leading-relaxed mb-4"></p>
+    <p id="unlockSrc" class="text-[11px] text-faint/70 italic leading-relaxed mb-7"></p>
+    <button id="unlockClose" class="tap w-full bg-dawn text-ink font-semibold rounded-xl py-4 text-[15px] hover:brightness-110 active:scale-[.99] transition">Continue</button>
+  </div>
 </div>
 
 <!-- ══════════════ MONTAGE ══════════════

@@ -79,7 +79,7 @@ function loadApp({ storage = new Map() } = {}) {
     AGE_BANDS, MILESTONES, BADGES, ARC_STOPS,
     arcPct, arcSpanYears, arcSpanDays,
     ARC_MIN_YEARS, ARC_MAX_YEARS,
-    ONBOARD_LAST, MONTAGE, MONTAGE_ART, montageCards
+    ONBOARD_LAST, MONTAGE, MONTAGE_ART, montageCards, CONFETTI_COLORS
   })`, sandbox);
   collected.cleanName = sandbox.cleanName;
 
@@ -399,6 +399,77 @@ test('both hosts publish the same directory the build writes', () => {
   const netlify = readFileSync(join(here, '..', 'netlify.toml'), 'utf8');
   assert.equal(vercel.outputDirectory, 'dist');
   assert.match(netlify, /publish\s*=\s*"dist"/);
+});
+
+/* ---------------- milestone unlock ---------------- */
+
+test('exactly the landmark milestones are marked big', () => {
+  const app = loadApp();
+  const big = [...app.MILESTONES, ...app.BADGES].filter(m => m.big).map(m => m.name);
+  assert.deepEqual(big.sort(), [
+    'CB1 receptors normalised',
+    'Excess risk largely averted',
+    'Structural habit rewiring',
+    'THC fully eliminated',
+    'Trajectory reset'
+  ].sort(), 'confetti is reserved for the moments people actually count toward');
+});
+
+test('most milestones are not landmarks', () => {
+  const app = loadApp();
+  const big = app.MILESTONES.filter(m => m.big).length;
+  assert.ok(big < app.MILESTONES.length / 2,
+    'if most milestones are landmarks, none of them are — and the tone rule is gone for nothing');
+});
+
+test('celebratedThrough starts null so history is acknowledged silently', () => {
+  const app = loadApp();
+  assert.equal(app.state.celebratedThrough, null,
+    'a new user, or an import of old data, must not be shown a pile of overlays at once');
+});
+
+test('a stored celebratedThrough survives a load', () => {
+  // 10 days in, which is exactly 4 milestones passed (12h, 24h, day 6, week 1),
+  // so boot has nothing new to acknowledge and must leave the stored value alone
+  const storage = new Map([['edondo.v1', JSON.stringify({
+    quitTs: Date.now() - 10 * DAY, celebratedThrough: 4
+  })]]);
+  const app = loadApp({ storage });
+  assert.equal(app.state.celebratedThrough, 4);
+});
+
+test('milestones passed while the app was closed are acknowledged on next open', () => {
+  // stored at 4 acknowledged, but 20 days have actually passed — the two-week
+  // milestone crossed while the app was shut, and must not be silently skipped
+  const storage = new Map([['edondo.v1', JSON.stringify({
+    quitTs: Date.now() - 20 * DAY, celebratedThrough: 4
+  })]]);
+  const app = loadApp({ storage });
+  assert.ok(app.state.celebratedThrough > 4,
+    'a milestone reached while the app was closed should still be shown when it reopens');
+});
+
+test('confetti is skipped entirely under reduced motion', () => {
+  const src = readFileSync(join(here, '..', 'app.js'), 'utf8');
+  const fn = src.split('function fireConfetti(')[1].split('\n}')[0];
+  assert.match(fn, /reduced-motion/, 'confetti must not fire for users who ask for less motion');
+  const guardBeforeDraw = fn.indexOf('reduced') < fn.indexOf('requestAnimationFrame');
+  assert.ok(guardBeforeDraw, 'the reduced-motion check must come before any drawing starts');
+});
+
+test('the confetti canvas is unhidden before it is measured', () => {
+  const src = readFileSync(join(here, '..', 'app.js'), 'utf8');
+  const fn = src.split('function fireConfetti(')[1].split('\n}')[0];
+  assert.ok(fn.indexOf('canvas.hidden = false') < fn.indexOf('canvas.clientWidth'),
+    'a hidden element reports clientWidth 0, which sizes the canvas to nothing and draws into the void');
+});
+
+test('confetti uses the app palette, not a rainbow', () => {
+  const app = loadApp();
+  const tokens = ['#8FB8E8', '#79C8B4', '#E5A25C', '#E7EEF7'];
+  for (const c of app.CONFETTI_COLORS) {
+    assert.ok(tokens.includes(c), `${c} is not one of the app's colours`);
+  }
 });
 
 /* ---------------- markup guards ----------------

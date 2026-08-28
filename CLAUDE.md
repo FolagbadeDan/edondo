@@ -104,6 +104,22 @@ different periods so they never visibly loop together. No canvas — this has to
 a low-end Android that needs to hold a charge all day. All of it stops under
 `prefers-reduced-motion`.
 
+### Milestone unlocks
+
+Reaching a milestone opens `#unlock`. Routine ones get smoke clearing; the five marked
+`big: true` (CB1 reset, THC cleared, 1 year, 3 years, 10 years) also get confetti.
+
+Confetti is **the one deliberate exception to the tone rule** against being congratulatory,
+agreed explicitly rather than drifted into. It is kept to the five moments people actually
+count toward — if most milestones were landmarks, none of them would be. It draws from the
+app's own palette rather than a rainbow, and it never fires under `prefers-reduced-motion`.
+
+`state.celebratedThrough` records how many milestones the user has been shown. It persists,
+so one passed while the app was closed is still acknowledged on next open. It is resynced
+**silently** on first run, on import, and when the quit date is edited — otherwise moving a
+quit date back a year fires seven overlays in a row. Several at once queue and show one at
+a time.
+
 **Planned:** a light theme alongside the dark one, driven entirely by tokens, because dark
 screens are hard to read in Nigerian daylight. When that lands, no colour may be defined
 only inside a theme block.
