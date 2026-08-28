@@ -10,6 +10,7 @@
    convenience copy, not the offline story. index.html plus sw.js is the real app. */
 
 import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -65,6 +66,36 @@ if (missing.length) {
 }
 for (const f of DEPLOY) cpSync(join(here, f), join(dist, f), { recursive: true });
 
+/* Cache-bust app.js by content hash.
+
+   Without this, a browser holding a cached app.js pairs it with a freshly
+   fetched index.html — new markup driven by old code, which fails in ways that
+   look like nothing on this earth. Stamping the hash into the URL means a
+   changed script is simply a different URL, so there is nothing to invalidate.
+
+   The service worker's precache list is stamped with the same hash, or it would
+   cache ./app.js while the page requests ./app.js?v=... and offline would break.
+   Folding the hash into the cache name also evicts the previous build's cache. */
+const hash = createHash('sha256').update(app).digest('hex').slice(0, 8);
+
+const distIndex = join(dist, 'index.html');
+const stampedHtml = readFileSync(distIndex, 'utf8').replace(SCRIPT_TAG, `<script src="app.js?v=${hash}"></script>`);
+if (!stampedHtml.includes(`app.js?v=${hash}`)) {
+  console.error('build failed: could not stamp the app.js version into dist/index.html');
+  process.exit(1);
+}
+writeFileSync(distIndex, stampedHtml, 'utf8');
+
+const distSw = join(dist, 'sw.js');
+const stampedSw = readFileSync(distSw, 'utf8')
+  .replace("'./app.js'", `'./app.js?v=${hash}'`)
+  .replace(/const CACHE = '([^']+)'/, `const CACHE = '$1-${hash}'`);
+if (!stampedSw.includes(`app.js?v=${hash}`) || !stampedSw.includes(`-${hash}'`)) {
+  console.error('build failed: could not stamp the version into dist/sw.js');
+  process.exit(1);
+}
+writeFileSync(distSw, stampedSw, 'utf8');
+
 const kb = n => (n / 1024).toFixed(1) + 'kb';
 console.log(`built edondo.html  ${kb(out.length)}  (index.html ${kb(html.length)} + app.js ${kb(app.length)})`);
-console.log(`dist/ ready with ${DEPLOY.length} entries: ${DEPLOY.join(', ')}`);
+console.log(`dist/ ready with ${DEPLOY.length} entries, app.js stamped v=${hash}`);

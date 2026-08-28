@@ -81,6 +81,7 @@ function loadApp({ storage = new Map() } = {}) {
     ARC_MIN_YEARS, ARC_MAX_YEARS,
     ONBOARD_LAST, MONTAGE, MONTAGE_ART, montageCards
   })`, sandbox);
+  collected.cleanName = sandbox.cleanName;
 
   return { ...collected, ageBand: sandbox.ageBand, profileFor: sandbox.profileFor,
            fmtCountdown: sandbox.fmtCountdown };
@@ -280,6 +281,43 @@ test('the storage key is the renamed one', () => {
   assert.equal(app.KEY, 'edondo.v1');
 });
 
+/* ---------------- the name ---------------- */
+
+test('cleanName tidies input without mangling real names', () => {
+  const app = loadApp();
+  assert.equal(app.cleanName('  Daniel  '), 'Daniel');
+  assert.equal(app.cleanName('Folagbade   Daniel'), 'Folagbade Daniel');
+  assert.equal(app.cleanName("N'Golo"), "N'Golo");
+  assert.equal(app.cleanName('Chiamaka-Ada'), 'Chiamaka-Ada');
+  assert.equal(app.cleanName('Adé'), 'Adé', 'accented letters must survive');
+  assert.equal(app.cleanName('陳'), '陳', 'non-latin scripts must survive');
+});
+
+test('cleanName rejects empty and punctuation-only input', () => {
+  const app = loadApp();
+  for (const v of ['', '   ', null, undefined, '...', '---', '!!!']) {
+    assert.equal(app.cleanName(v), '', `"${v}" should clean to empty`);
+  }
+});
+
+test('cleanName caps length so it cannot break a heading', () => {
+  const app = loadApp();
+  const out = app.cleanName('x'.repeat(200));
+  assert.equal(out.length, 24);
+});
+
+test('the name defaults to empty and is part of stored state', () => {
+  const app = loadApp();
+  assert.equal(app.state.name, '');
+  assert.ok('name' in app.state);
+});
+
+test('a stored name survives a load', () => {
+  const storage = new Map([['edondo.v1', JSON.stringify({ quitTs: 1234, name: 'Ada' })]]);
+  const app = loadApp({ storage });
+  assert.equal(app.state.name, 'Ada');
+});
+
 /* ---------------- the montage ---------------- */
 
 test('every montage claim carries a source, and every card has art', () => {
@@ -397,6 +435,27 @@ test('every onboarding step is reachable from the step before it', () => {
 test('form fields are kept at 16px so iOS does not zoom on focus', () => {
   assert.match(indexHtml, /input\[class\][^{]*\{[^}]*font-size:\s*16px/,
     'the 16px rule must beat Tailwind\'s .text-sm on specificity, or it silently does nothing');
+});
+
+test('arc labels are laid out by flow, not by percentage', () => {
+  const labels = indexHtml.match(/<div id="arcLabels"[^>]*>/)[0];
+  assert.match(labels, /flex/,
+    'percentage-positioned arc labels overlapped by up to 120px on a 360px screen; keep them in flow');
+  assert.ok(!/absolute/.test(labels));
+});
+
+test('the app.js reference is cache-busted at build time', () => {
+  const build = readFileSync(join(here, '..', 'build.mjs'), 'utf8');
+  assert.match(build, /createHash/, 'app.js must be stamped, or a cached script pairs with fresh markup');
+  assert.match(build, /app\.js\?v=\$\{hash\}/);
+  // the service worker must precache the same URL the page asks for
+  assert.match(build, /'\.\/app\.js\?v=\$\{hash\}'/,
+    'sw.js must precache the stamped URL or offline breaks');
+});
+
+test('data can be imported, not only exported', () => {
+  assert.match(indexHtml, /id="importBtn"/, 'export with no import makes a new phone a total loss');
+  assert.match(indexHtml, /id="importFile"/);
 });
 
 test('the quit-time chips cover the common answers', () => {

@@ -28,8 +28,17 @@ try {
 
 let memory = null;
 
+/* Names are display-only and never leave the device, so the rules are loose:
+   trim it, collapse runs of whitespace, cap the length so it cannot break a
+   heading, and drop anything that is only punctuation. */
+function cleanName(v) {
+  const s = String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, 24);
+  return /[\p{L}\p{N}]/u.test(s) ? s : '';
+}
+
 const defaults = () => ({
   schema: SCHEMA,
+  name: '',
   quitTs: null,
   age: null,         // age now, drives which argument the app makes
   startAge: null,    // age at first use — under 18 changes the content profile
@@ -525,6 +534,19 @@ function phaseCopy(t) {
 
 
 /* ---------------- age-driven life expectancy ---------------- */
+/* The name is used in exactly three places: the top of Home, the craving screen,
+   and the onboarding clock question. Anywhere else and it starts to sound like a
+   wellness app addressing you by name, which the tone rules exist to prevent. */
+function renderGreeting() {
+  const el = $('#homeGreeting');
+  if (!state.name) { el.hidden = true; return; }
+  const d = Math.floor(elapsed() / DAY) + 1;
+  el.textContent = d === 1
+    ? `${state.name}, day one.`
+    : `${state.name}, day ${group(d)}.`;
+  el.hidden = false;
+}
+
 const JHA_SRC = 'Jha et al., NEJM 2013 — 21st-Century Hazards of Smoking and Benefits of Cessation';
 const YOUTH_SRC = 'Psychological Medicine, age-dependent association of cannabis use with psychotic disorder; J Dual Diagnosis 2023';
 
@@ -622,13 +644,14 @@ function renderArc() {
       style="left:${arcPct(s.at).toFixed(2)}%"></span>`;
   }).join('');
 
-  $('#arcLabels').innerHTML = stops.map((s, i) => {
+  /* Names only. The long descriptions used to live here, but they duplicated the
+     "Next unlock" card below and were what made this unreadable on a phone. They
+     stay available on hover for anyone on a pointer device. */
+  $('#arcLabels').innerHTML = stops.map(s => {
     const done = elapsed() >= s.at;
-    const p = arcPct(s.at);
-    const align = i === 0 ? 'translate-x-0 text-left' : i === stops.length - 1 ? '-translate-x-full text-right' : '-translate-x-1/2 text-center';
-    return `<span class="absolute top-0 ${align} w-24" style="left:${p.toFixed(2)}%">
-      <span class="block font-mono tnum text-[10px] ${done ? 'text-oxygen' : 'text-faint'}">${s.short}</span>
-      <span class="block text-[9px] leading-tight mt-0.5 ${done ? 'text-muted' : 'text-faint/60'}">${s.full}</span>
+    return `<span class="flex flex-col items-center gap-1 min-w-0" title="${escapeHtml(s.full)}">
+      <span class="block w-1.5 h-1.5 rounded-full ${done ? 'bg-oxygen' : 'bg-line'}"></span>
+      <span class="block font-mono tnum text-[10px] whitespace-nowrap ${done ? 'text-oxygen' : 'text-faint'}">${s.short}</span>
     </span>`;
   }).join('');
 }
@@ -709,6 +732,7 @@ function slowTick() {
     renderArc();
   }
   renderSkin();
+  renderGreeting();   // the day number in it rolls over at midnight-ish
   tick();
 }
 
@@ -909,6 +933,12 @@ function renderStats() {
 $('#whySave').addEventListener('click', () => {
   state.why = $('#whyEdit').value.trim(); save(); toast('Statement saved');
 });
+$('#nameSave').addEventListener('click', () => {
+  state.name = cleanName($('#nameEdit').value);
+  $('#nameEdit').value = state.name;
+  save(); renderGreeting();
+  toast(state.name ? 'Name updated' : 'Name cleared');
+});
 $('#ageSave').addEventListener('click', () => {
   const v = parseInt($('#ageEdit').value, 10);
   if (!isFinite(v) || v < 10 || v > 100) { toast('Enter an age between 10 and 100'); return; }
@@ -942,6 +972,40 @@ $('#exportBtn').addEventListener('click', () => {
   a.download = `edondo-${new Date().toISOString().slice(0, 10)}.json`;
   a.click(); URL.revokeObjectURL(a.href);
 });
+/* Export existed with no way back in, which made a new phone a total loss. The
+   import is deliberately strict: it must look like our own export, and it asks
+   before overwriting, because the thing it overwrites is someone's streak. */
+$('#importBtn').addEventListener('click', () => $('#importFile').click());
+
+$('#importFile').addEventListener('change', async e => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';                 // let the same file be picked twice
+  if (!file) return;
+
+  let incoming;
+  try {
+    incoming = JSON.parse(await file.text());
+  } catch {
+    return toast('That file is not readable JSON');
+  }
+
+  if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming))
+    return toast('That does not look like an E Don Do export');
+  if (!('quitTs' in incoming))
+    return toast('That export has no quit date in it');
+  if (incoming.quitTs !== null && !isFinite(Number(incoming.quitTs)))
+    return toast('That export has a broken quit date');
+
+  const when = incoming.quitTs ? fmtDate(Number(incoming.quitTs)) : 'no start date';
+  if (!confirm(`Replace everything on this phone with the imported file (${when})? Your current data is erased.`)) return;
+
+  state = migrate(incoming);
+  save();
+  lastMilestoneCount = -1;
+  boot();
+  toast('Data imported');
+});
+
 $('#resetBtn').addEventListener('click', () => {
   if (!confirm('Erase your quit date, statement and every log on this device? This cannot be undone.')) return;
   state = defaults();
@@ -963,6 +1027,10 @@ const PANIC_PHASES = [
 function openPanic() {
   panicOpened = Date.now();
   panicEnd = Date.now() + PANIC_MS;
+  // this is the moment the name earns its place — 2am, alone, wanting to smoke
+  $('#panicEyebrow').textContent = state.name
+    ? `${state.name} — the 15-minute rule`
+    : 'The 15-minute rule';
   $('#panicOverlay').hidden = false;
   document.body.classList.add('panic-mode');
   document.body.style.overflow = 'hidden';
@@ -1026,7 +1094,7 @@ $('#panicExit').addEventListener('click', () => {
    put the submit button below an unscrollable fold, so this walks four short
    steps instead. Validation runs per step, which means an error appears next to
    the question that caused it rather than at the end of a long form. */
-const ONBOARD_LAST = 4;
+const ONBOARD_LAST = 5;
 let onboardStep = 1;
 let onboardQuitTs = null;   // chosen by chip or picker; null until the user says
 
@@ -1046,14 +1114,17 @@ function renderOnboard() {
   ).join('');
 
   $('#onboardBack').hidden = onboardStep === 1;
-  $('#onboardNext').textContent =
-    onboardStep === ONBOARD_LAST ? 'Start the clock'
-    : onboardStep === 4 - 1      ? 'Continue'
-    : 'Continue';
+  $('#onboardNext').textContent = onboardStep === ONBOARD_LAST ? 'Start the clock' : 'Continue';
 
   // the "why" step is genuinely optional, so say so on the button itself
   if (onboardStep === ONBOARD_LAST && !$('#onboardWhy').value.trim())
     $('#onboardNext').textContent = 'Skip and start the clock';
+
+  // once we know the name, use it — the clock question is the first place it fits
+  const name = cleanName($('#onboardName').value);
+  $('#onboardSmokeHead').textContent = name
+    ? `${name}, when did you last smoke?`
+    : 'When did you last smoke?';
 
   onboardError(null);
   $('#onboard').scrollTop = 0;
@@ -1061,12 +1132,13 @@ function renderOnboard() {
 
 /* Returns an error string, or null when the step is good to leave. */
 function validateOnboardStep(step) {
-  if (step === 1) {
+  // step 1 is the name, which is optional by design — nothing to validate
+  if (step === 2) {
     if (onboardQuitTs === null) return 'Pick when you last smoked. Tap one of the four options.';
     if (!isFinite(onboardQuitTs)) return 'That time did not read properly. Pick it again.';
     if (onboardQuitTs > Date.now() + MIN) return 'That time is in the future. Pick when you actually last smoked.';
   }
-  if (step === 2) {
+  if (step === 3) {
     const age = parseInt($('#onboardAge').value, 10);
     const startAge = parseInt($('#onboardStartAge').value, 10);
     if ($('#onboardAge').value && (!isFinite(age) || age < 10 || age > 100))
@@ -1076,7 +1148,7 @@ function validateOnboardStep(step) {
     if (isFinite(age) && isFinite(startAge) && startAge > age)
       return 'You cannot have started at an age older than you are now.';
   }
-  if (step === 3) {
+  if (step === 4) {
     const years = parseFloat($('#onboardYears').value);
     const age = parseInt($('#onboardAge').value, 10);
     if ($('#onboardYears').value && (!isFinite(years) || years < 0 || years > 80))
@@ -1092,6 +1164,7 @@ function commitOnboard() {
   const startAge = parseInt($('#onboardStartAge').value, 10);
   const years = parseFloat($('#onboardYears').value);
 
+  state.name = cleanName($('#onboardName').value);
   state.quitTs = Math.min(onboardQuitTs ?? Date.now(), Date.now());
   state.age = isFinite(age) ? age : null;
   state.startAge = isFinite(startAge) ? startAge : null;
@@ -1157,6 +1230,7 @@ function boot() {
   }
   $('#onboard').hidden = true;
   $('#shell').hidden = false;
+  $('#nameEdit').value     = state.name || '';
   $('#whyEdit').value      = state.why || '';
   $('#ageEdit').value      = state.age || '';
   $('#startAgeEdit').value = state.startAge || '';
@@ -1168,6 +1242,7 @@ function boot() {
   renderMilestones();
   renderLife();
   renderArc();
+  renderGreeting();
   renderSkin();
   renderSymptoms();
   renderBadges();
@@ -1184,7 +1259,13 @@ function boot() {
 boot();
 setInterval(tick, 1000);
 setInterval(slowTick, 60_000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); slowTick(); } });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) save();          // phones kill backgrounded tabs without warning
+  else { tick(); slowTick(); }
+});
+/* pagehide fires on the paths beforeunload misses on mobile Safari, and is the
+   last reliable moment to write anything still only in memory. */
+window.addEventListener('pagehide', () => save());
 
 /* keyboard: escape closes the dopamine menu only — never the craving timer */
 document.addEventListener('keydown', e => {

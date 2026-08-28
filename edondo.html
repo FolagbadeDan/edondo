@@ -91,7 +91,10 @@ tailwind.config = {
   /* hairline card */
   .card { background: linear-gradient(180deg, rgba(23,32,45,.9), rgba(17,24,35,.9)); border: 1px solid #222E3D; }
 
-  .eyebrow { letter-spacing: .18em; text-transform: uppercase; font-size: .625rem; font-weight: 600; }
+  /* letter-spacing also applies after the final character, which pushes short
+     uppercase labels a few px past their box in narrow cards. The negative
+     right margin takes that trailing space back. */
+  .eyebrow { letter-spacing: .18em; margin-right: -.18em; text-transform: uppercase; font-size: .625rem; font-weight: 600; }
 
   input, textarea, select { color-scheme: dark; }
   textarea { resize: none; }
@@ -162,7 +165,18 @@ tailwind.config = {
         <h1 class="font-display text-[2rem] leading-[1.08] font-extrabold tracking-tight mb-3">Today is the day it stops being normal.</h1>
         <p class="text-muted text-sm leading-relaxed mb-7">Everything stays on this phone. Nothing is sent anywhere, nothing is shared, and you do not need an account.</p>
 
-        <label class="block mb-3 eyebrow text-faint">When did you last smoke?</label>
+        <label class="block mb-2 eyebrow text-faint">What should this app call you?</label>
+        <input id="onboardName" type="text" maxlength="24" autocomplete="given-name" placeholder="Your first name"
+          class="w-full bg-raised border border-line rounded-xl px-4 py-3.5 text-base placeholder:text-faint mb-2" />
+        <p class="text-[12px] text-faint leading-relaxed">Only used on this phone. A nickname is fine, and you can skip it.</p>
+      </section>
+
+      <!-- ── step 2 ── -->
+      <section data-ostep="2" hidden>
+        <h1 id="onboardSmokeHead" class="font-display text-[2rem] leading-[1.08] font-extrabold tracking-tight mb-3">When did you last smoke?</h1>
+        <p class="text-muted text-sm leading-relaxed mb-7">This starts your clock. If you are not sure of the exact time, the closest option is good enough.</p>
+
+        <label class="block mb-3 eyebrow text-faint">Pick the closest</label>
         <div class="grid grid-cols-2 gap-2 mb-3">
           <button type="button" data-quit="0"  class="ochip tap rounded-xl border border-line py-3.5 text-[15px] text-body hover:bg-raised transition">Just now</button>
           <button type="button" data-quit="4"  class="ochip tap rounded-xl border border-line py-3.5 text-[15px] text-body hover:bg-raised transition">A few hours ago</button>
@@ -174,7 +188,7 @@ tailwind.config = {
       </section>
 
       <!-- ── step 2 ── -->
-      <section data-ostep="2" hidden>
+      <section data-ostep="3" hidden>
         <h1 class="font-display text-[2rem] leading-[1.08] font-extrabold tracking-tight mb-3">How old are you?</h1>
         <p class="text-muted text-sm leading-relaxed mb-7">This decides which facts the app shows you. What matters at 16 is not what matters at 40.</p>
 
@@ -189,7 +203,7 @@ tailwind.config = {
       </section>
 
       <!-- ── step 3 ── -->
-      <section data-ostep="3" hidden>
+      <section data-ostep="4" hidden>
         <h1 class="font-display text-[2rem] leading-[1.08] font-extrabold tracking-tight mb-3">How long were you smoking?</h1>
         <p class="text-muted text-sm leading-relaxed mb-7">A rough number is fine. This sets the length of your recovery bar, so it matches your own history instead of someone else's.</p>
 
@@ -199,7 +213,7 @@ tailwind.config = {
       </section>
 
       <!-- ── step 4 ── -->
-      <section data-ostep="4" hidden>
+      <section data-ostep="5" hidden>
         <h1 class="font-display text-[2rem] leading-[1.08] font-extrabold tracking-tight mb-3">Why are you stopping?</h1>
         <p class="text-muted text-sm leading-relaxed mb-7">You will read this back on a hard night, when you need a reason that came from you and not from an app.</p>
 
@@ -254,6 +268,10 @@ tailwind.config = {
     <!-- ══════════ HOME ══════════ -->
     <section id="tab-home" data-tab class="space-y-4 tabpane">
 
+      <!-- Stated once, quietly, at the top. Using the name on every card would
+           read as a wellness app talking at you, which the tone rules rule out. -->
+      <p id="homeGreeting" class="font-display text-lg font-semibold tracking-tight px-1" hidden></p>
+
       <!-- SIGNATURE: breathing recovery dial -->
       <div class="relative card rounded-xl2 px-6 pt-8 pb-7 overflow-hidden">
         <div class="flex flex-col items-center">
@@ -307,7 +325,11 @@ tailwind.config = {
           <div id="arcTicks"></div>
           <div id="arcHead" class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-dawn ring-4 ring-ink transition-all duration-700" style="left:0%"></div>
         </div>
-        <div id="arcLabels" class="relative h-9 mt-3"></div>
+        <!-- Evenly spaced, not positioned by percentage. The log scale bunches the
+             early stops together, so percentage-positioned labels overlapped each
+             other by up to 120px on a 360px screen. The bar's ticks still carry the
+             spatial information; this row only has to name them. -->
+        <div id="arcLabels" class="flex justify-between gap-1 mt-4"></div>
       </div>
 
       <!-- Next milestone -->
@@ -487,6 +509,14 @@ tailwind.config = {
       </div>
 
       <div class="card rounded-xl2 p-5">
+        <h2 class="font-display font-semibold tracking-tight mb-1">Your name</h2>
+        <p class="text-xs text-faint mb-3">Only stored on this phone. Leave it empty if you would rather the app did not use it.</p>
+        <input id="nameEdit" type="text" maxlength="24" autocomplete="given-name" placeholder="Your first name"
+          class="w-full bg-ink/60 border border-line rounded-xl px-3 py-3 mb-3" />
+        <button id="nameSave" class="tap w-full border border-line rounded-xl py-3 text-sm font-medium text-muted hover:text-body hover:bg-raised transition">Update name</button>
+      </div>
+
+      <div class="card rounded-xl2 p-5">
         <div class="flex items-center gap-2 mb-1">
           <i data-lucide="history" class="w-4 h-4 text-dawn"></i>
           <h2 class="font-display font-semibold tracking-tight">How you got here</h2>
@@ -523,11 +553,14 @@ tailwind.config = {
       </div>
 
       <div class="card rounded-xl2 p-5">
-        <h2 class="font-display font-semibold tracking-tight mb-3">Your data</h2>
-        <div class="flex gap-2">
-          <button id="exportBtn" class="tap flex-1 border border-line rounded-xl py-3 text-sm font-medium text-muted hover:text-body hover:bg-raised transition">Export JSON</button>
-          <button id="resetBtn" class="tap flex-1 border border-alarm/40 text-alarm/90 rounded-xl py-3 text-sm font-medium hover:bg-alarm/10 transition">Erase everything</button>
+        <h2 class="font-display font-semibold tracking-tight mb-1">Your data</h2>
+        <p class="text-xs text-faint mb-3">Everything lives on this phone only. Export before you change phones, or you lose it — there is no account to restore from.</p>
+        <div class="flex gap-2 mb-2">
+          <button id="exportBtn" class="tap flex-1 border border-line rounded-xl py-3 text-sm font-medium text-muted hover:text-body hover:bg-raised transition">Export</button>
+          <button id="importBtn" class="tap flex-1 border border-line rounded-xl py-3 text-sm font-medium text-muted hover:text-body hover:bg-raised transition">Import</button>
         </div>
+        <input id="importFile" type="file" accept="application/json,.json" hidden />
+        <button id="resetBtn" class="tap w-full border border-alarm/40 text-alarm/90 rounded-xl py-3 text-sm font-medium hover:bg-alarm/10 transition">Erase everything</button>
         <p id="storageWarn" class="text-xs text-ember mt-3 leading-relaxed" hidden>Storage is blocked in this browser context, so progress will vanish on refresh. Download the file and open it locally to keep your data.</p>
       </div>
     </section>
@@ -610,7 +643,7 @@ tailwind.config = {
 <div id="panicOverlay" class="fixed inset-0 z-[90] bg-ink flex flex-col" hidden>
   <div class="flex-1 flex flex-col items-center justify-center px-6 py-8 max-w-lg mx-auto w-full">
 
-    <p class="eyebrow text-ember mb-6">The 15-minute rule</p>
+    <p id="panicEyebrow" class="eyebrow text-ember mb-6">The 15-minute rule</p>
 
     <div class="relative w-[268px] h-[268px] flex items-center justify-center mb-8">
       <svg viewBox="0 0 260 260" class="absolute inset-0 w-full h-full -rotate-90">
@@ -680,8 +713,17 @@ try {
 
 let memory = null;
 
+/* Names are display-only and never leave the device, so the rules are loose:
+   trim it, collapse runs of whitespace, cap the length so it cannot break a
+   heading, and drop anything that is only punctuation. */
+function cleanName(v) {
+  const s = String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, 24);
+  return /[\p{L}\p{N}]/u.test(s) ? s : '';
+}
+
 const defaults = () => ({
   schema: SCHEMA,
+  name: '',
   quitTs: null,
   age: null,         // age now, drives which argument the app makes
   startAge: null,    // age at first use — under 18 changes the content profile
@@ -1177,6 +1219,19 @@ function phaseCopy(t) {
 
 
 /* ---------------- age-driven life expectancy ---------------- */
+/* The name is used in exactly three places: the top of Home, the craving screen,
+   and the onboarding clock question. Anywhere else and it starts to sound like a
+   wellness app addressing you by name, which the tone rules exist to prevent. */
+function renderGreeting() {
+  const el = $('#homeGreeting');
+  if (!state.name) { el.hidden = true; return; }
+  const d = Math.floor(elapsed() / DAY) + 1;
+  el.textContent = d === 1
+    ? `${state.name}, day one.`
+    : `${state.name}, day ${group(d)}.`;
+  el.hidden = false;
+}
+
 const JHA_SRC = 'Jha et al., NEJM 2013 — 21st-Century Hazards of Smoking and Benefits of Cessation';
 const YOUTH_SRC = 'Psychological Medicine, age-dependent association of cannabis use with psychotic disorder; J Dual Diagnosis 2023';
 
@@ -1274,13 +1329,14 @@ function renderArc() {
       style="left:${arcPct(s.at).toFixed(2)}%"></span>`;
   }).join('');
 
-  $('#arcLabels').innerHTML = stops.map((s, i) => {
+  /* Names only. The long descriptions used to live here, but they duplicated the
+     "Next unlock" card below and were what made this unreadable on a phone. They
+     stay available on hover for anyone on a pointer device. */
+  $('#arcLabels').innerHTML = stops.map(s => {
     const done = elapsed() >= s.at;
-    const p = arcPct(s.at);
-    const align = i === 0 ? 'translate-x-0 text-left' : i === stops.length - 1 ? '-translate-x-full text-right' : '-translate-x-1/2 text-center';
-    return `<span class="absolute top-0 ${align} w-24" style="left:${p.toFixed(2)}%">
-      <span class="block font-mono tnum text-[10px] ${done ? 'text-oxygen' : 'text-faint'}">${s.short}</span>
-      <span class="block text-[9px] leading-tight mt-0.5 ${done ? 'text-muted' : 'text-faint/60'}">${s.full}</span>
+    return `<span class="flex flex-col items-center gap-1 min-w-0" title="${escapeHtml(s.full)}">
+      <span class="block w-1.5 h-1.5 rounded-full ${done ? 'bg-oxygen' : 'bg-line'}"></span>
+      <span class="block font-mono tnum text-[10px] whitespace-nowrap ${done ? 'text-oxygen' : 'text-faint'}">${s.short}</span>
     </span>`;
   }).join('');
 }
@@ -1361,6 +1417,7 @@ function slowTick() {
     renderArc();
   }
   renderSkin();
+  renderGreeting();   // the day number in it rolls over at midnight-ish
   tick();
 }
 
@@ -1561,6 +1618,12 @@ function renderStats() {
 $('#whySave').addEventListener('click', () => {
   state.why = $('#whyEdit').value.trim(); save(); toast('Statement saved');
 });
+$('#nameSave').addEventListener('click', () => {
+  state.name = cleanName($('#nameEdit').value);
+  $('#nameEdit').value = state.name;
+  save(); renderGreeting();
+  toast(state.name ? 'Name updated' : 'Name cleared');
+});
 $('#ageSave').addEventListener('click', () => {
   const v = parseInt($('#ageEdit').value, 10);
   if (!isFinite(v) || v < 10 || v > 100) { toast('Enter an age between 10 and 100'); return; }
@@ -1594,6 +1657,40 @@ $('#exportBtn').addEventListener('click', () => {
   a.download = `edondo-${new Date().toISOString().slice(0, 10)}.json`;
   a.click(); URL.revokeObjectURL(a.href);
 });
+/* Export existed with no way back in, which made a new phone a total loss. The
+   import is deliberately strict: it must look like our own export, and it asks
+   before overwriting, because the thing it overwrites is someone's streak. */
+$('#importBtn').addEventListener('click', () => $('#importFile').click());
+
+$('#importFile').addEventListener('change', async e => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';                 // let the same file be picked twice
+  if (!file) return;
+
+  let incoming;
+  try {
+    incoming = JSON.parse(await file.text());
+  } catch {
+    return toast('That file is not readable JSON');
+  }
+
+  if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming))
+    return toast('That does not look like an E Don Do export');
+  if (!('quitTs' in incoming))
+    return toast('That export has no quit date in it');
+  if (incoming.quitTs !== null && !isFinite(Number(incoming.quitTs)))
+    return toast('That export has a broken quit date');
+
+  const when = incoming.quitTs ? fmtDate(Number(incoming.quitTs)) : 'no start date';
+  if (!confirm(`Replace everything on this phone with the imported file (${when})? Your current data is erased.`)) return;
+
+  state = migrate(incoming);
+  save();
+  lastMilestoneCount = -1;
+  boot();
+  toast('Data imported');
+});
+
 $('#resetBtn').addEventListener('click', () => {
   if (!confirm('Erase your quit date, statement and every log on this device? This cannot be undone.')) return;
   state = defaults();
@@ -1615,6 +1712,10 @@ const PANIC_PHASES = [
 function openPanic() {
   panicOpened = Date.now();
   panicEnd = Date.now() + PANIC_MS;
+  // this is the moment the name earns its place — 2am, alone, wanting to smoke
+  $('#panicEyebrow').textContent = state.name
+    ? `${state.name} — the 15-minute rule`
+    : 'The 15-minute rule';
   $('#panicOverlay').hidden = false;
   document.body.classList.add('panic-mode');
   document.body.style.overflow = 'hidden';
@@ -1678,7 +1779,7 @@ $('#panicExit').addEventListener('click', () => {
    put the submit button below an unscrollable fold, so this walks four short
    steps instead. Validation runs per step, which means an error appears next to
    the question that caused it rather than at the end of a long form. */
-const ONBOARD_LAST = 4;
+const ONBOARD_LAST = 5;
 let onboardStep = 1;
 let onboardQuitTs = null;   // chosen by chip or picker; null until the user says
 
@@ -1698,14 +1799,17 @@ function renderOnboard() {
   ).join('');
 
   $('#onboardBack').hidden = onboardStep === 1;
-  $('#onboardNext').textContent =
-    onboardStep === ONBOARD_LAST ? 'Start the clock'
-    : onboardStep === 4 - 1      ? 'Continue'
-    : 'Continue';
+  $('#onboardNext').textContent = onboardStep === ONBOARD_LAST ? 'Start the clock' : 'Continue';
 
   // the "why" step is genuinely optional, so say so on the button itself
   if (onboardStep === ONBOARD_LAST && !$('#onboardWhy').value.trim())
     $('#onboardNext').textContent = 'Skip and start the clock';
+
+  // once we know the name, use it — the clock question is the first place it fits
+  const name = cleanName($('#onboardName').value);
+  $('#onboardSmokeHead').textContent = name
+    ? `${name}, when did you last smoke?`
+    : 'When did you last smoke?';
 
   onboardError(null);
   $('#onboard').scrollTop = 0;
@@ -1713,12 +1817,13 @@ function renderOnboard() {
 
 /* Returns an error string, or null when the step is good to leave. */
 function validateOnboardStep(step) {
-  if (step === 1) {
+  // step 1 is the name, which is optional by design — nothing to validate
+  if (step === 2) {
     if (onboardQuitTs === null) return 'Pick when you last smoked. Tap one of the four options.';
     if (!isFinite(onboardQuitTs)) return 'That time did not read properly. Pick it again.';
     if (onboardQuitTs > Date.now() + MIN) return 'That time is in the future. Pick when you actually last smoked.';
   }
-  if (step === 2) {
+  if (step === 3) {
     const age = parseInt($('#onboardAge').value, 10);
     const startAge = parseInt($('#onboardStartAge').value, 10);
     if ($('#onboardAge').value && (!isFinite(age) || age < 10 || age > 100))
@@ -1728,7 +1833,7 @@ function validateOnboardStep(step) {
     if (isFinite(age) && isFinite(startAge) && startAge > age)
       return 'You cannot have started at an age older than you are now.';
   }
-  if (step === 3) {
+  if (step === 4) {
     const years = parseFloat($('#onboardYears').value);
     const age = parseInt($('#onboardAge').value, 10);
     if ($('#onboardYears').value && (!isFinite(years) || years < 0 || years > 80))
@@ -1744,6 +1849,7 @@ function commitOnboard() {
   const startAge = parseInt($('#onboardStartAge').value, 10);
   const years = parseFloat($('#onboardYears').value);
 
+  state.name = cleanName($('#onboardName').value);
   state.quitTs = Math.min(onboardQuitTs ?? Date.now(), Date.now());
   state.age = isFinite(age) ? age : null;
   state.startAge = isFinite(startAge) ? startAge : null;
@@ -1809,6 +1915,7 @@ function boot() {
   }
   $('#onboard').hidden = true;
   $('#shell').hidden = false;
+  $('#nameEdit').value     = state.name || '';
   $('#whyEdit').value      = state.why || '';
   $('#ageEdit').value      = state.age || '';
   $('#startAgeEdit').value = state.startAge || '';
@@ -1820,6 +1927,7 @@ function boot() {
   renderMilestones();
   renderLife();
   renderArc();
+  renderGreeting();
   renderSkin();
   renderSymptoms();
   renderBadges();
@@ -1836,7 +1944,13 @@ function boot() {
 boot();
 setInterval(tick, 1000);
 setInterval(slowTick, 60_000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); slowTick(); } });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) save();          // phones kill backgrounded tabs without warning
+  else { tick(); slowTick(); }
+});
+/* pagehide fires on the paths beforeunload misses on mobile Safari, and is the
+   last reliable moment to write anything still only in memory. */
+window.addEventListener('pagehide', () => save());
 
 /* keyboard: escape closes the dopamine menu only — never the craving timer */
 document.addEventListener('keydown', e => {

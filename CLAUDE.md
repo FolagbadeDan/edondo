@@ -48,6 +48,7 @@ Do not confuse these. Conflating them is what produced the original bugs.
 
 | Fact | Field | Drives |
 |---|---|---|
+| What to call them | `name` | Home greeting, craving screen, onboarding clock question — nowhere else |
 | Time since quitting | `quitTs` | Counters, milestones, rings, countdowns |
 | Age now | `age` | Which argument the app makes — see `profileFor()` |
 | Age at first use | `startAge` | Under 18 switches to the developmental argument |
@@ -98,6 +99,14 @@ low-literacy users, who consistently prefer concrete photographic images. Lucide
 exactly that kind of abstract symbol. **Adding more icons makes comprehension worse.** Use
 photographs for anything a person does, and never ship an icon without a text label.
 
+### The name
+
+Optional, display-only, never leaves the device. Used in exactly three places: the top of
+Home, the craving overlay eyebrow, and the onboarding clock question. Anywhere else and it
+starts to read as a wellness app addressing you by name, which the tone rules exist to
+prevent. `cleanName()` trims, collapses whitespace, caps at 24 characters and rejects
+punctuation-only input; it deliberately accepts accents and non-latin scripts.
+
 ## Tone
 
 Plain, direct, and never congratulatory-cheerful. This person is on day one of something
@@ -141,6 +150,11 @@ Netlify.** No server, no runtime, no framework.
 npm test       # the arithmetic
 npm run build  # regenerate edondo.html and write dist/
 ```
+
+`app.js` is cache-busted by content hash at build time — `dist/index.html` requests
+`app.js?v=<hash>`, `dist/sw.js` precaches the same URL, and the cache name carries the hash
+so each build evicts the last. Without this a browser pairs a cached script with fresh
+markup, which fails in ways that look like nothing on earth. It bit during development.
 
 `npm run build` writes `dist/`, which is the only thing deployed. It contains the app and
 nothing else — no CLAUDE.md, no tests, no build script served as web files. Both Vercel and
